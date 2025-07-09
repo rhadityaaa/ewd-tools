@@ -29,10 +29,17 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    avatar?: string;
-    email_verified_at: string | null;
+    division_id: number;
+    division: Division;
+    role_id: number;
+    role: Role;
     created_at: string;
     updated_at: string;
+}
+
+export interface Role {
+    id: number;
+    name: string;
 }
 
 export interface Division {
@@ -43,6 +50,21 @@ export interface Division {
     updated_at: string;
 }
 
+export interface Period {
+    id: number;
+    name: string;
+    start_date: string;
+    end_date: string;
+    status: 'draft' | 'active' | 'ended' | 'expired';
+    created_by: number;
+    created_by_user?: User;
+    created_at: string;
+    updated_at: string;
+    is_active: boolean;
+    is_expired: boolean;
+    remaining_time: string;
+}
+
 export interface Borrower {
     id: number;
     name: string;
@@ -50,6 +72,11 @@ export interface Borrower {
     division: Division;
     created_at: string;
     updated_at: string;
+}
+
+export interface Template {
+    id: number;
+    name: string;
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
