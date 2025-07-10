@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('visibilty_rules', function (Blueprint $table) {
+        Schema::create('visibility_rules', function (Blueprint $table) {
             $table->id();
             $table->morphs('entity');
             $table->text('description')->nullable();

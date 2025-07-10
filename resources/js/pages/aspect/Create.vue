@@ -26,6 +26,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const form = useForm({
+    code: '',
     name: '',
     description: '',
     questions: [
@@ -134,8 +135,8 @@ const submit = () => {
         onSuccess: () => {
             toast.success('Aspek berhasil dibuat!');
         },
-        onError: () => {
-            toast.error('Terjadi kesalahan saat menyimpan aspek');
+        onError: (errors) => {
+            toast.error(errors);
         },
     });
 };
@@ -182,6 +183,17 @@ const submit = () => {
                         </CardHeader>
                         <CardContent class="space-y-6">
                             <div class="grid gap-4 md:grid-cols-2">
+                                <div class="space-y-2">
+                                    <Label for="code" class="text-sm font-medium"> Kode Aspek <span class="text-red-500">*</span> </Label>
+                                    <Input
+                                        id="code"
+                                        v-model="form.code"
+                                        placeholder="Masukkan kode aspek"
+                                        required
+                                        class="transition-all duration-200 focus:ring-2"
+                                    />
+                                    <InputError :message="form.errors.code" />
+                                </div>
                                 <div class="space-y-2">
                                     <Label for="name" class="text-sm font-medium"> Nama Aspek <span class="text-red-500">*</span> </Label>
                                     <Input

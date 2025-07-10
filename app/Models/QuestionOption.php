@@ -13,6 +13,7 @@ class QuestionOption extends Model
         'question_version_id',
         'option_text',
         'score',
+        'effective_from'
     ];
 
     protected $casts = [

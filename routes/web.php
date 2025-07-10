@@ -3,6 +3,7 @@
 
 use App\Http\Controllers\AspectController;
 use App\Http\Controllers\BorrowerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\PeriodController;
@@ -16,9 +17,9 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::resource('divisions', DivisionController::class);
 Route::resource('borrowers', BorrowerController::class);
@@ -34,6 +35,11 @@ Route::post('periods/check-expired', [PeriodController::class, 'checkExpiredPeri
 Route::post('periods/{period}/extend',[PeriodController::class,'extend'])->name('periods.extend');
 
 Route::get('forms', [FormController::class, 'index'])->name('forms');
+Route::post('forms/submit', [FormController::class, 'submitAll'])->name('forms.submit');
+
+Route::get('summary', function () {
+    return Inertia::render('Summary');
+})->name('summary');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

@@ -38,7 +38,8 @@ class FormService
                 $query->where('effective_from', '<=', now())
                     ->orderBy('version_number', 'desc');
             },
-            'aspectVersions.questionVersions.questionOptions'
+            'aspectVersions.questionVersions.questionOptions',
+            'aspectVersions.questionVersions.visibilityRules'
         ])->get();
     }
 
@@ -78,7 +79,18 @@ class FormService
                         'option_text' => $option->option_text, 
                         'score' => $option->score
                     ];
-                })
+                }),
+                'visibility_rules' => $qv->visibilityRules->map(function($rule) {
+                    return [
+                        'id' => $rule->id,
+                        'entity_id' => $rule->entity_id,
+                        'entity_type' => $rule->entity_type,
+                        'source_type' => $rule->source_type,
+                        'source_field' => $rule->source_field,
+                        'operator' => $rule->operator,
+                        'value' => $rule->value,
+                    ];
+                })->toArray(),
             ];
         })->toArray();
     }

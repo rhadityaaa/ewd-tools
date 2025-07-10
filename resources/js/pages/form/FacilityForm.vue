@@ -446,9 +446,7 @@ defineExpose({
                                     class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >-</TableCell
                                 >
-                                <TableCell
-                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs sm:text-sm md:px-4 md:py-3 md:text-base"
-                                >
+                                <TableCell class="border border-gray-200 px-2 py-2 text-center text-xs sm:text-sm md:px-4 md:py-3 md:text-base">
                                     <button
                                         type="button"
                                         @click="addKieRow"
@@ -541,37 +539,38 @@ defineExpose({
                             <!-- KMKE Summary Row -->
                             <TableRow class="bg-green-50">
                                 <TableCell
-                                    class="border border-gray-200 px-2 py-2 text-center text-xs font-medium sm:text-sm md:px-4 md:py-3 md:text-base"
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs font-medium sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >KMKE (IDR Juta)</TableCell
                                 >
                                 <TableCell
-                                    class="border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >{{ formatCurrency(totalKmkeLimit) }}</TableCell
                                 >
                                 <TableCell
-                                    class="border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >{{ formatCurrency(totalKmkeOutstanding) }}</TableCell
                                 >
                                 <TableCell
-                                    class="border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >{{ avgKmkeInterestRate }}%</TableCell
                                 >
                                 <TableCell
-                                    class="border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >{{ formatCurrency(totalKmkePrincipalArrears) }}</TableCell
                                 >
                                 <TableCell
-                                    class="border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >{{ formatCurrency(totalKmkeInterestArrears) }}</TableCell
                                 >
                                 <TableCell
-                                    class="border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs font-semibold sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >{{ avgKmkePdo }}</TableCell
                                 >
-                                <TableCell class="border border-gray-200 px-2 py-2 text-center text-xs sm:text-sm md:px-4 md:py-3 md:text-base"
+                                <TableCell
+                                    class="min-w-[120px] border border-gray-200 px-2 py-2 text-center text-xs sm:text-sm md:px-4 md:py-3 md:text-base"
                                     >-</TableCell
                                 >
-                                <TableCell class="border border-gray-200 px-2 py-2 text-center md:px-4 md:py-3">
+                                <TableCell class="min-w-[120px] border border-gray-200 px-2 py-2 text-center md:px-4 md:py-3">
                                     <button
                                         type="button"
                                         @click="addKmkeRow"

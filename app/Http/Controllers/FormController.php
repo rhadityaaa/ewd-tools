@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BorrowerFacility;
+use App\Models\Period;
 use App\Models\Report;
 use App\Models\ReportAspect;
 use App\Services\FormService;
@@ -30,6 +31,8 @@ class FormController extends Controller
     public function submitAll(Request $request)
     {
         try {
+
+            dd($request);
             DB::beginTransaction();
             
             // Validasi data
@@ -39,12 +42,22 @@ class FormController extends Controller
                 'aspectsBorrower' => 'required|array',
                 'reportMeta' => 'required|array'
             ]);
+
+            // $activePeriod = Period::where('status', 'Active')
+            //                         ->where('start_date', '<=', now())
+            //                         ->where('end_date', '>=', now())
+            //                         ->first();
+
+            // if (!$activePeriod) {
+            //     dd($request);
+            //     return back()->withErrors(['period' => 'Periode penilaian telah berakhir saat Anda mencoba menyimpan.']);
+            // }
             
             // Simpan data ke database
             $report = Report::create([
                 'borrower_id' => $validated['informationBorrower']['borrowerId'],
                 'template_id' => $validated['reportMeta']['templateId'],
-                'period_id' => $validated['reportMeta']['periodId'],
+                'period_id' => 1,
                 'status' => 'draft'
             ]);
             

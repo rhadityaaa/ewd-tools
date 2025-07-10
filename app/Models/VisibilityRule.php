@@ -9,8 +9,6 @@ class VisibilityRule extends Model
 {
     use HasFactory;
 
-    protected $table = 'visibilty_rules';
-
     protected $fillable = [
         'entity_type',
         'entity_id', 

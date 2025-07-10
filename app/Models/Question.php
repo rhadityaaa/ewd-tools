@@ -6,14 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Question extends Model
 {
-    protected $fillable = [
-        'aspect_id',
-        'question_text',
-        'weight',
-        'max_score',
-        'min_score',
-        'is_mandatory',
-    ];
+    protected $fillable = [];
 
     public function aspect()
     {
@@ -23,10 +16,5 @@ class Question extends Model
     public function questionVersions()
     {
         return $this->hasMany(QuestionVersion::class);
-    }
-
-    public function visibilityRules()
-    {
-        return $this->morphMany(VisibilityRule::class, 'entity');
     }
 }

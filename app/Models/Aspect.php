@@ -23,11 +23,6 @@ class Aspect extends Model
         return $this->hasOne(AspectVersion::class)->latestOfMany();
     }
 
-    public function visibilityRules()
-    {
-        return $this->morphMany(VisibilityRule::class, 'entity');
-    }
-
     public function questions()
     {
         return $this->hasMany(Question::class);

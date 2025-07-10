@@ -76,7 +76,7 @@ class AspectBuilderService
             }
 
             if (!empty($data['visibility_rules'])) {
-                $question->visibilityRules()->createMany($data['visibility_rules']);
+                $questionVersion->visibilityRules()->createMany($data['visibility_rules']);
             }
         }
     }

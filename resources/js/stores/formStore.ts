@@ -25,7 +25,7 @@ interface FacilityState {
 
 interface AspectState {
     questionId: number;
-    questionText: number;
+    questionText: string;
     aspectName: string;
     aspectCode: string;
     options: {
@@ -121,6 +121,9 @@ export const useFormStore = defineStore('form', {
                 this.aspectsBorrower[aspectIndex].selectedOptionId = selectedOptionId;
                 this.aspectsBorrower[aspectIndex].notes = notes;
             }
+        },
+        updateReportMeta(payload: Partial<ReportMetaData>) {
+            this.reportMeta = { ...this.reportMeta, ...payload };
         },
     },
 });

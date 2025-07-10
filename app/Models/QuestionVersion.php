@@ -42,4 +42,9 @@ class QuestionVersion extends Model
     {
         return $this->hasMany(QuestionOption::class);
     }
+
+    public function visibilityRules()
+    {
+        return $this->morphMany(VisibilityRule::class, 'entity');
+    }
 }

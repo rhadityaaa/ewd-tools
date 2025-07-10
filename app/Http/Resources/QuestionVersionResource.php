@@ -26,7 +26,7 @@ class QuestionVersionResource extends JsonResource
             'is_mandatory' => (bool) $this->is_mandatory,
             'effective_from' => $this->effective_from,
             'options' => QuestionOptionResource::collection($this->questionOptions),
-            'visibility_rules' => VisibilityRuleResource::collection($this->question->visibilityRules),
+            'visibility_rules' => VisibilityRuleResource::collection($this->visibilityRules),
         ];
     }
 }

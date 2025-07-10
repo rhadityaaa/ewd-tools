@@ -39,6 +39,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const form = useForm({
+    code: aspect.code,
     name: aspect.name,
     description: aspect.description,
     questions: aspect.latest_version.questions.map((q: any) => ({
@@ -168,6 +169,18 @@ const submit = () => {
                             <!-- Aspect Information -->
                             <div class="space-y-4 rounded-lg border p-4">
                                 <h3 class="text-lg font-semibold">Informasi Aspek</h3>
+
+                                <div class="space-y-2">
+                                    <Label for="code" class="text-sm font-medium"> Kode Aspek <span class="text-red-500">*</span> </Label>
+                                    <Input
+                                        id="code"
+                                        v-model="form.code"
+                                        placeholder="Masukkan kode aspek"
+                                        required
+                                        class="transition-all duration-200 focus:ring-2"
+                                    />
+                                    <InputError :message="form.errors.code" />
+                                </div>
 
                                 <div class="grid gap-2">
                                     <Label for="name">Nama Aspek</Label>

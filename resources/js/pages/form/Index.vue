@@ -68,6 +68,7 @@ const submitAllData = async () => {
         form.post(route('forms.submit'), {
             onSuccess: (page) => {
                 toast.success('Data berhasil disimpan');
+                console.log(page);
                 // Redirect ke summary dengan report ID
                 const reportId = page.props.reportId || page.props.flash?.reportId;
                 if (reportId) {
@@ -84,9 +85,6 @@ const submitAllData = async () => {
                 } else {
                     toast.error('Gagal menyimpan data');
                 }
-            },
-            onFinish: () => {
-                // Reset processing state if needed
             },
         });
     } catch (error) {
@@ -135,6 +133,7 @@ const currentProps = computed(() => currentStep.value.props || {});
 <template>
     <div class="min-h-screen">
         <!-- Header -->
+
         <div class="bg-[#2E3192] p-4 text-white shadow-md dark:bg-[#1A1D68] dark:text-gray-200">
             <Label class="pl-2 text-2xl font-bold">Form Penilaian Debitur</Label>
         </div>
@@ -208,6 +207,7 @@ const currentProps = computed(() => currentStep.value.props || {});
                     >Next</Button
                 >
 
+                <!-- <Link :href="route('summary')"> -->
                 <Button
                     v-if="formState.activeStep === formState.totalSteps"
                     @click="submitAllData"
@@ -216,6 +216,7 @@ const currentProps = computed(() => currentStep.value.props || {});
                 >
                     {{ form.processing ? 'Menyimpan...' : 'Submit' }}
                 </Button>
+                <!-- </Link> -->
             </div>
         </div>
     </div>

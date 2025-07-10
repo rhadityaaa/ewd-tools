@@ -18,13 +18,6 @@ class DatabaseSeeder extends Seeder
             DivisionSeeder::class,
             BorrowerSeeder::class,
             SuperAdminSeeder::class,
-            AspectSeeder::class,
-            AspectVersionSeeder::class,
-            QuestionSeeder::class,
-            QuestionVersionSeeder::class,
-            QuestionOptionSeeder::class,
-            TemplateSeeder::class,
-            VisibilityRuleSeeder::class,
             PeriodSeeder::class
         ]);
     }

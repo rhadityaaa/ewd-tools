@@ -23,7 +23,7 @@ class AspectBuilderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:50', 'unique:aspect,code'],
+            'code' => ['required', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'questions' => ['required', 'array', 'min:1'],
@@ -37,8 +37,6 @@ class AspectBuilderRequest extends FormRequest
             'questions.*.options.*.score' => ['required_with:questions.*.options', 'numeric'],
             'questions.*.visibility_rules' => ['nullable', 'array'],
             'questions.*.visibility_rules.*.description' => ['nullable', 'string'],
-            'questions.*.visibility_rules.*.entity_type' => ['required_with:questions.*.visibility_rules', Rule::in(['aspect', 'question'])],
-            'questions.*.visibility_rules.*.entity_id' => ['required_with:questions.*.visibility_rules', 'integer'],
             'questions.*.visibility_rules.*.source_type' => ['required_with:questions.*.visibility_rules', Rule::in(['borrower_detail', 'borrower_facility', 'answer'])],
             'questions.*.visibility_rules.*.source_field' => ['required_with:questions.*.visibility_rules', 'string'],
             'questions.*.visibility_rules.*.operator' => ['required_with:questions.*.visibility_rules', 'string'],
