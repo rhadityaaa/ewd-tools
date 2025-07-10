@@ -17,7 +17,7 @@ return new class extends Migration
             $table->integer('version_number');
             $table->string('name');
             $table->text('description')->nullable();
-            $table->timestamp('effective_form');
+            $table->timestamp('effective_from');
             $table->timestamps();
 
             $table->unique(['aspect_id', 'version_number']);

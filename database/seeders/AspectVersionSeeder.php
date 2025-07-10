@@ -15,7 +15,7 @@ class AspectVersionSeeder extends Seeder
                 'version_number' => $i,
                 'name' => 'Versi ' . $i,
                 'description' => 'Deskripsi versi ' . $i,
-                'effective_form' => now(),
+                'effective_from' => now(),
             ]);
         }
     }

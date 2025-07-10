@@ -18,6 +18,7 @@ class QuestionVersion extends Model
         'max_score',
         'min_score',
         'is_mandatory',
+        'effective_from'
     ];
 
     protected $casts = [

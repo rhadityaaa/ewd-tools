@@ -4,6 +4,7 @@
 use App\Http\Controllers\AspectController;
 use App\Http\Controllers\BorrowerController;
 use App\Http\Controllers\DivisionController;
+use App\Http\Controllers\FormController;
 use App\Http\Controllers\PeriodController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TemplateController;
@@ -31,6 +32,8 @@ Route::post('periods/{period}/start', [PeriodController::class, 'start'])->name(
 Route::post('periods/{period}/end', [PeriodController::class,'stop'])->name('periods.stop');
 Route::post('periods/check-expired', [PeriodController::class, 'checkExpiredPeriods'])->name('periods.check-expired');
 Route::post('periods/{period}/extend',[PeriodController::class,'extend'])->name('periods.extend');
+
+Route::get('forms', [FormController::class, 'index'])->name('forms');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

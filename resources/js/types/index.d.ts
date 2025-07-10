@@ -70,8 +70,38 @@ export interface Borrower {
     name: string;
     division_id: number;
     division: Division;
-    created_at: string;
-    updated_at: string;
+    details: BorrowerDetail;
+    facilities: BorrowerFacility;
+}
+
+export interface BorrowerDetail {
+    id: number;
+    borrower_id: number;
+    borrower: Borrower;
+    borrower_group?: string;
+    purpose: string;
+    economic_sector: string;
+    business_field: string;
+    borrower_business: string;
+    collectibility: number;
+    restructuring: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface BorrowerFacility {
+    id: number;
+    borrower_id: number;
+    facility_name: string;
+    limit: number;
+    outstanding: number;
+    interest_rate: number;
+    principal_arrears: number;
+    interest_arrears: number;
+    pdo_days: number;
+    maturity_date: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface Template {

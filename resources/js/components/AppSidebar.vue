@@ -81,7 +81,7 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <div class="px-2 py-1">
-                <Link :href="route('dashboard')" class="w-full">
+                <Link :href="route('forms')" class="w-full">
                     <Button class="w-full" size="sm">
                         <PlusCircle class="h-5 w-5" />
                         <span>Tambah Report Baru</span>
