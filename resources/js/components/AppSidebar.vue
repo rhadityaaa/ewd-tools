@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Building, ClipboardList, Clock, FileText, Folder, LayoutGrid, PlusCircle, Shield, UserIcon } from 'lucide-vue-next';
+import { BookOpen, Building, ClipboardList, Clock, FileText, Folder, LayoutGrid, PlusCircle, UserIcon } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -18,11 +18,6 @@ const mainNavItems: NavItem[] = [
         title: 'User',
         href: route('users.index'),
         icon: UserIcon,
-    },
-    {
-        title: 'Role',
-        href: route('roles.index'),
-        icon: Shield,
     },
     {
         title: 'Divisi',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BorrowerRequest;
 use App\Http\Resources\BorrowerResource;
+use App\Http\Resources\DivisionResource;
 use App\Services\BorrowerService;
 use App\Services\DivisionService;
 use Inertia\Inertia;
@@ -26,7 +27,11 @@ class BorrowerController extends Controller
 
     public function create()
     {
-        return Inertia::render('borrower/Create');
+        $divisions = $this->divisionService->getAllDivisions();
+
+        return Inertia::render('borrower/Create', [
+            'divisions' => DivisionResource::collection($divisions)->resolve()
+        ]);
     }
 
     public function store(BorrowerRequest $request)

@@ -4,14 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { BreadcrumbItem, Division } from '@/types';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { EditIcon, EyeIcon, PlusIcon, Trash2Icon } from 'lucide-vue-next';
+import { ref } from 'vue';
+import { useToast } from 'vue-toastification';
 
-const props = defineProps<{
+const toast = useToast();
+
+defineProps<{
     divisions: Division[];
 }>();
-
-console.log('Divisions:', props.divisions);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -23,6 +25,33 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: route('divisions.index'),
     },
 ];
+
+const isDeleteModalOpen = ref(false);
+const divisionToDelete = ref<number | null>(null);
+
+const openDeleteModal = (id: number) => {
+    divisionToDelete.value = id;
+    isDeleteModalOpen.value = true;
+};
+
+const closeDeleteModal = () => {
+    isDeleteModalOpen.value = false;
+    divisionToDelete.value = null;
+};
+
+const handleDelete = (id: number) => {
+    router.delete(route('divisions.destroy', id), {
+        onSuccess: () => {
+            toast.success('Divisi berhasil dihapus');
+        },
+        onError: () => {
+            toast.error('Gagal menghapus divisi. Silahkan coba lagi.');
+        },
+        onFinish: () => {
+            closeDeleteModal();
+        },
+    });
+};
 </script>
 
 <template>
@@ -32,7 +61,7 @@ const breadcrumbs: BreadcrumbItem[] = [
         <div class="py-6 md:py-12">
             <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
                 <Card>
-                    <CardHeader class="flex items-center justify-between">
+                    <CardHeader class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <CardTitle class="text-xl font-bold md:text-2xl">Daftar Divisi</CardTitle>
                         <Link :href="route('divisions.create')">
                             <Button>
@@ -45,12 +74,12 @@ const breadcrumbs: BreadcrumbItem[] = [
                         <div v-if="divisions.length === 0" class="py-8 text-center text-gray-500">
                             Belum ada divisi yang terdaftar. Silahkan tambahkan divisi baru.
                         </div>
-                        <Table v-else>
+                        <Table v-else class="w-full overflow-x-auto">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Kode</TableHead>
                                     <TableHead>Nama</TableHead>
-                                    <TableHead class="text-right"></TableHead>
+                                    <TableHead class="text-right">Aksi</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -68,21 +97,20 @@ const breadcrumbs: BreadcrumbItem[] = [
                                         <Link
                                             :href="route('divisions.show', division.id)"
                                             class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                                            title="View"
+                                            title="Lihat Divisi"
                                         >
                                             <EyeIcon class="h-5 w-5" />
                                         </Link>
-                                        <Link
-                                            :href="route('divisions.destroy', division.id)"
+                                        <button
+                                            @click="openDeleteModal(division.id)"
                                             method="delete"
                                             as="button"
                                             type="button"
                                             class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                            onclick="return confirm('Are you sure you want to delete this Division?')"
-                                            title="Delete"
+                                            title="Hapus Divisi"
                                         >
                                             <Trash2Icon class="h-5 w-5" />
-                                        </Link>
+                                        </button>
                                     </TableCell>
                                 </TableRow>
                             </TableBody>
@@ -92,4 +120,26 @@ const breadcrumbs: BreadcrumbItem[] = [
             </div>
         </div>
     </AppLayout>
+
+    <!-- Modal Delete -->
+    <div v-if="isDeleteModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <Card class="w-full max-w-sm animate-in fade-in zoom-in">
+            <CardHeader class="items-center text-center">
+                <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
+                    <Trash2Icon class="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <CardTitle class="text-xl">Konfirmasi Penghapusan</CardTitle>
+            </CardHeader>
+            <CardContent class="text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Apakah Anda yakin ingin menghapus data ini?<br />
+                    Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                </p>
+            </CardContent>
+            <CardFooter class="flex flex-col-reverse gap-3 bg-gray-50 px-6 sm:flex-row sm:justify-end dark:bg-gray-900/50">
+                <Button variant="outline" @click="closeDeleteModal"> Batal </Button>
+                <Button variant="destructive" @click="divisionToDelete && handleDelete(divisionToDelete)"> Ya, Hapus </Button>
+            </CardFooter>
+        </Card>
+    </div>
 </template>

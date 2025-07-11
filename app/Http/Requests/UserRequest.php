@@ -18,7 +18,7 @@ class UserRequest extends FormRequest
             'email' => $this->isMethod('post') ? 'required|email|unique:users,email' : 'required|email',
             'password' => $this->isMethod('post') ? 'required|string|min:6' : 'nullable|string|min:6',
             'role_id' => 'required|exists:roles,id',
-            'division_id' => 'required|exists:divisions,id',
+            'division_id' => 'nullable|exists:divisions,id',
         ];
     }
 }

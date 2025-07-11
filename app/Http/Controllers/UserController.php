@@ -11,9 +11,9 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    protected UserService $userService;
-    protected DivisionService $divisionService;
-    protected RoleService $roleService;
+    protected $userService;
+    protected $divisionService;
+    protected $roleService;
 
     public function __construct(UserService $userService, DivisionService $divisionService, RoleService $roleService)
     {

@@ -73,9 +73,10 @@ const breadcrumbs: BreadcrumbItem[] = [
                                     <Shield class="h-4 w-4 text-gray-500" />
                                     <span class="text-sm font-medium text-gray-500">Role</span>
                                 </div>
-                                <Badge variant="secondary" class="text-sm">
+                                <Badge v-if="user.role_id" variant="secondary" class="text-sm">
                                     {{ user.role.name }}
                                 </Badge>
+                                <span v-else class="text-sm text-gray-500">N/A</span>
                             </div>
 
                             <div class="space-y-2">

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\BorrowerFacility;
-use App\Models\Period;
 use App\Models\Report;
 use App\Models\ReportAspect;
 use App\Services\FormService;
@@ -31,8 +30,6 @@ class FormController extends Controller
     public function submitAll(Request $request)
     {
         try {
-
-            dd($request);
             DB::beginTransaction();
             
             // Validasi data

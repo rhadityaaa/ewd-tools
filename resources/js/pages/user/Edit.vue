@@ -18,7 +18,7 @@ const props = defineProps({
     divisions: Array<Division>,
 });
 
-const user = props.user?.data;
+const user = props.user;
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -31,21 +31,21 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
     {
         title: 'Edit Pengguna',
-        href: route('users.edit', user.id),
+        href: route('users.edit', user?.id),
     },
 ];
 
 const form = useForm({
-    name: user.name,
-    email: user.email,
+    name: user?.name,
+    email: user?.email,
     password: '',
     password_confirmation: '',
-    role_id: user.role_id,
-    division_id: user.division_id,
+    role_id: user?.role_id,
+    division_id: user?.division_id,
 });
 
 const submit = () => {
-    form.put(route('users.update', user.id), {
+    form.put(route('users.update', user?.id), {
         onSuccess: () => {
             toast.success('Pengguna berhasil diperbarui');
         },

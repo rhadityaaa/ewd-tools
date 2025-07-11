@@ -9,7 +9,7 @@ use Inertia\Inertia;
 
 class RoleController extends Controller 
 {
-    protected RoleService $roleService;
+    protected $roleService;
     
     public function __construct(RoleService $roleService)
     {
@@ -21,7 +21,7 @@ class RoleController extends Controller
         $roles = $this->roleService->getAllRoles();
 
         return Inertia::render('role/Index', [
-            'roles' => RoleResource::collection($roles),
+            'roles' => RoleResource::collection($roles)->resolve(),
         ]);
     }
 

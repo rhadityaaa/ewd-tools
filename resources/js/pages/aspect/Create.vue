@@ -20,9 +20,18 @@ import { useToast } from 'vue-toastification';
 const toast = useToast();
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: route('dashboard') },
-    { title: 'Aspek', href: route('aspects.index') },
-    { title: 'Tambah Aspek', href: route('aspects.create') },
+    {
+        title: 'Dashboard',
+        href: route('dashboard'),
+    },
+    {
+        title: 'Aspek',
+        href: route('aspects.index'),
+    },
+    {
+        title: 'Tambah Aspek',
+        href: route('aspects.create'),
+    },
 ];
 
 const form = useForm({
@@ -36,20 +45,45 @@ const form = useForm({
             max_score: 100,
             min_score: 0,
             is_mandatory: false,
-            options: [{ option_text: '', score: 0 }],
-            visibility_rules: [],
+            options: [
+                {
+                    option_text: '',
+                    score: 0,
+                },
+            ],
+            visibility_rules: [
+                {
+                    description: '',
+                    source_type: '',
+                    source_field: '',
+                    operator: '',
+                    value: '',
+                },
+            ],
         },
     ],
 });
 
 const sourceTypeOptions = [
-    { value: 'borrower_detail', label: 'Detail Peminjam' },
-    { value: 'borrower_facility', label: 'Fasilitas Peminjam' },
-    { value: 'answer', label: 'Jawaban' },
+    {
+        value: 'borrower_detail',
+        label: 'Detail Peminjam',
+    },
+    {
+        value: 'borrower_facility',
+        label: 'Fasilitas Peminjam',
+    },
+    {
+        value: 'answer',
+        label: 'Jawaban',
+    },
 ];
 
 const operatorOptions = [
-    { value: '=', label: 'Sama dengan (=)' },
+    {
+        value: '=',
+        label: 'Sama dengan (=)',
+    },
     { value: '!=', label: 'Tidak sama dengan (!=)' },
     { value: '>', label: 'Lebih besar dari (>)' },
     { value: '<', label: 'Lebih kecil dari (<)' },

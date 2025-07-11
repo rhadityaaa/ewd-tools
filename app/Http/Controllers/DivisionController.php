@@ -9,9 +9,12 @@ use Inertia\Inertia;
 
 class DivisionController extends Controller
 {
-    public function __construct(
-        protected DivisionService $divisionService
-    ) {}
+    protected $divisionService;
+
+    public function __construct(DivisionService $divisionService)
+    {
+        $this->divisionService = $divisionService;
+    }
 
     public function index()
     {
@@ -39,7 +42,7 @@ class DivisionController extends Controller
         $division = $this->divisionService->getDivisionById($id);
 
         return Inertia::render('division/Show', [
-            'division' => new DivisionResource($division),
+            'division' => new DivisionResource($division)->resolve(),
         ]);
     }
 
@@ -48,7 +51,7 @@ class DivisionController extends Controller
         $division = $this->divisionService->getDivisionById($id);
 
         return Inertia::render('division/Edit', [
-            'division' => new DivisionResource($division),
+            'division' => new DivisionResource($division)->resolve(),
         ]);
     }
 
