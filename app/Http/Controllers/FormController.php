@@ -39,16 +39,6 @@ class FormController extends Controller
                 'aspectsBorrower' => 'required|array',
                 'reportMeta' => 'required|array'
             ]);
-
-            // $activePeriod = Period::where('status', 'Active')
-            //                         ->where('start_date', '<=', now())
-            //                         ->where('end_date', '>=', now())
-            //                         ->first();
-
-            // if (!$activePeriod) {
-            //     dd($request);
-            //     return back()->withErrors(['period' => 'Periode penilaian telah berakhir saat Anda mencoba menyimpan.']);
-            // }
             
             // Simpan data ke database
             $report = Report::create([

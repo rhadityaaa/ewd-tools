@@ -41,7 +41,7 @@ const form = useForm({
     questions: [
         {
             question_text: '',
-            weight: 1,
+            weight: 100,
             max_score: 100,
             min_score: 0,
             is_mandatory: false,
@@ -67,11 +67,11 @@ const form = useForm({
 const sourceTypeOptions = [
     {
         value: 'borrower_detail',
-        label: 'Detail Peminjam',
+        label: 'Informasi Debitur',
     },
     {
         value: 'borrower_facility',
-        label: 'Fasilitas Peminjam',
+        label: 'Fasilitas Debitur',
     },
     {
         value: 'answer',
@@ -80,10 +80,7 @@ const sourceTypeOptions = [
 ];
 
 const operatorOptions = [
-    {
-        value: '=',
-        label: 'Sama dengan (=)',
-    },
+    { value: '=', label: 'Sama dengan (=)' },
     { value: '!=', label: 'Tidak sama dengan (!=)' },
     { value: '>', label: 'Lebih besar dari (>)' },
     { value: '<', label: 'Lebih kecil dari (<)' },
@@ -93,7 +90,6 @@ const operatorOptions = [
     { value: 'not_in', label: 'Tidak termasuk dalam (not in)' },
 ];
 
-// Computed untuk validasi
 const totalWeight = computed(() => {
     return form.questions.reduce((sum, q) => sum + Number(q.weight), 0);
 });
@@ -111,7 +107,7 @@ const weightStatus = computed(() => {
 const addQuestion = () => {
     form.questions.push({
         question_text: '',
-        weight: 1,
+        weight: 100,
         max_score: 100,
         min_score: 0,
         is_mandatory: false,
@@ -239,7 +235,7 @@ const submit = () => {
                                     />
                                     <InputError :message="form.errors.name" />
                                 </div>
-                                <div class="space-y-2">
+                                <div class="space-y-2 md:col-span-2">
                                     <Label for="description" class="text-sm font-medium"> Deskripsi </Label>
                                     <Textarea
                                         id="description"

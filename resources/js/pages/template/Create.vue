@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { BreadcrumbItem } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Aspect, BreadcrumbItem } from '@/types';
+import { Head, useForm } from '@inertiajs/vue3';
+import { Info } from 'lucide-vue-next';
 import { useToast } from 'vue-toastification';
 
 const toast = useToast();
+
+const props = defineProps<{
+    aspects: Aspect[];
+}>();
+
+console.log(props.aspects);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -28,22 +35,17 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const form = useForm({
     name: '',
+    description: '',
+    aspect_ids: [] as number[],
 });
 
-const submit = () => {
-    form.post(route('templates.store'), {
-        preserveScroll: true,
-        onSuccess: () => {
-            toast.success('Template berhasil ditambah.');
-        },
-        onError: () => {
-            toast.error('Gagal menambah template. Silahkan periksa kembali data Anda.');
-        },
-    });
-};
+form.transform((data) => ({
+    ...data,
+    aspect_ids: data.aspect_ids.map((id) => Number(id)),
+}));
 
-const resetForm = () => {
-    form.reset();
+const handleAspectSelection = (aspectId: number, checked: boolean): void => {
+    console.log(`Checkbox unit ${aspectId} is now ${checked}`);
 };
 </script>
 
@@ -53,27 +55,59 @@ const resetForm = () => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="py-6 md:py-12">
             <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
-                <Card>
-                    <CardHeader class="flex flex-row items-center justify-between">
-                        <CardTitle class="text-xl font-bold md:text-2xl">Tambah Template</CardTitle>
-                        <Link :href="route('templates.index')">
-                            <Button type="button" variant="outline">Kembali</Button>
-                        </Link>
-                    </CardHeader>
-                    <CardContent>
-                        <form @submit.prevent="submit" class="space-y-6">
+                <!-- Header Section -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900 lg:text-3xl">Tambah Template Baru</h1>
+                            <p class="mt-2 text-sm text-gray-600">Buat template penilaian baru dengan pemilihan ganda aspek dan aturan visibilitas</p>
+                        </div>
+                    </div>
+                </div>
+                <form @submit.prevent class="space-y-8">
+                    <Card>
+                        <CardHeader class="flex flex-row items-center justify-between">
+                            <CardTitle class="flex items-center text-lg">
+                                <Info class="mr-2 h-5 w-5" />
+                                Informasi Dasar
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent class="space-y-6">
                             <div class="grid gap-2">
-                                <Label for="name">Nama Template</Label>
-                                <Input id="name" v-model="form.name" type="text" placeholder="Masukkan nama template" />
+                                <Label for="name" class="text-sm font-medium">Nama Template</Label>
+                                <Input id="name" v-model="form.name" placeholder="Masukan nama template" />
                                 <InputError :message="form.errors.name" />
                             </div>
-                            <div class="flex justify-end space-x-2">
-                                <Button type="button" variant="outline" @click="resetForm" v-if="form.isDirty">Reset</Button>
-                                <Button type="submit" :disabled="form.processing || !form.isDirty">Simpan Data</Button>
+                            <div class="grid gap-2">
+                                <Label for="description">Deskripsi</Label>
+                                <Textarea id="description" v-model="form.description" placeholder="Masukan deskripsi template" />
+                                <InputError :message="form.errors.description" />
                             </div>
-                        </form>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+
+                    <!-- Aspect Section -->
+                    <Card>
+                        <CardHeader>
+                            <div class="flex items-center justify-between">
+                                <CardTitle class="flex items-center text-lg"> Aspek Template </CardTitle>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="space-y-4">
+                                <div v-if="props.aspects.length > 0">
+                                    <div class="divide-y rounded-md border">
+                                        <div v-for="aspect in props.aspects" :key="aspect.id">
+                                            <!-- <Checkbox
+                                                :id="`aspect-${aspect.id}`
+                                                :modelValue -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </form>
             </div>
         </div>
     </AppLayout>

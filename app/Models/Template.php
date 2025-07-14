@@ -13,8 +13,13 @@ class Template extends Model
         'name'
     ];
 
-    public function visibilityRules()
+    public function templateVersions()
     {
-        return $this->morphMany(VisibilityRule::class, 'entity');
+        return $this->hasMany(TemplateVersion::class);
+    }
+
+    public function latestVersion()
+    {
+        return $this->hasOne(TemplateVersion::class)->latestOfMany('version_number');
     }
 }

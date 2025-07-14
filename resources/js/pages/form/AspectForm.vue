@@ -21,8 +21,6 @@ const props = defineProps({
     },
 });
 
-console.log(props.aspectGroups);
-
 // Pinia store
 const formStore = useFormStore();
 
@@ -34,7 +32,6 @@ const aspectGroups = reactive(
     props.aspectGroups.map((group) => ({
         ...group,
         aspects: group.aspects.map((aspect) => {
-            // Check if aspect already exists in store
             const existingAspect = formStore.aspectsBorrower.find((a) => a.questionId === aspect.id);
             return {
                 ...aspect,
@@ -68,7 +65,6 @@ onMounted(() => {
                 maxScore: aspect.max_score || 1,
                 minScore: aspect.min_score || 0,
                 weight: aspect.weight || 1,
-                // Pastikan visibility_rules juga ada di sini jika perlu
                 visibility_rules: aspect.visibility_rules || [],
             });
         });
@@ -76,88 +72,102 @@ onMounted(() => {
     formStore.updateAspectsBorrower(aspectsData);
 });
 
-// --- LOGIKA BARU UNTUK VISIBILITY RULES ---
+// --- REFINED VISIBILITY LOGIC ---
 
-/**
- * Fungsi helper untuk mengevaluasi apakah sebuah aspek/pertanyaan harus ditampilkan.
- * @param {object} aspect - Objek aspek/pertanyaan yang akan dievaluasi.
- * @returns {boolean} - True jika harus ditampilkan, false jika disembunyikan.
- */
-const isAspectVisible = (aspect) => {
-    // Jika tidak ada visibility_rules, selalu tampilkan pertanyaan.
-    if (!aspect.visibility_rules || aspect.visibility_rules.length === 0) {
+const isVisible = (entity) => {
+    if (!entity.visibility_rules || entity.visibility_rules.length === 0) {
         return true;
     }
 
-    // Evaluasi setiap aturan. Semua kondisi dalam aturan harus terpenuhi (logika AND).
-    return aspect.visibility_rules.every((rule) => {
+    return entity.visibility_rules.every((rule) => {
         let sourceValue;
+        const sourceField = rule.source_field;
 
-        // 1. Ambil nilai dari sumber data yang sesuai (Pinia store atau jawaban lain).
         if (rule.source_type === 'borrower_detail') {
-            // Mengambil data dari store 'informationBorrower'.
-            sourceValue = formStore.informationBorrower[rule.source_field];
-        } else if (rule.source_type === 'answer') {
-            // Mencari jawaban dari pertanyaan lain di dalam form ini.
-            // 'source_field' pada kasus ini berisi ID dari pertanyaan sumber.
-            const sourceAspect = aspectGroups.flatMap((g) => g.aspects).find((a) => a.id == rule.source_field);
-            sourceValue = sourceAspect ? sourceAspect.value : undefined;
+            sourceValue = formStore.informationBorrower?.[sourceField];
         }
-        // Anda bisa menambahkan 'else if' lain untuk source_type berbeda, misal 'borrower_facility'.
+        // ▼▼▼ SIMPLIFIED LOGIC ▼▼▼
+        else if (rule.source_type === 'borrower_facility') {
+            // ALWAYS use the 'getTotalByKey' getter for any field from facilities.
+            sourceValue = formStore.getTotalByKey(sourceField);
+        } else if (rule.source_type === 'answer') {
+            const sourceAspect = aspectGroups.flatMap((g) => g.aspects).find((a) => a.id == sourceField);
+            sourceValue = sourceAspect?.value;
+        }
 
-        // Jika nilai sumber tidak ditemukan, anggap aturan tidak terpenuhi (sembunyikan pertanyaan).
         if (sourceValue === undefined) {
+            console.warn(`Visibility check failed: Source value for '${sourceField}' is undefined.`, { rule });
             return false;
         }
 
-        // 2. Lakukan perbandingan berdasarkan operator.
-        // Konversi nilai ke string untuk perbandingan yang konsisten, kecuali untuk perbandingan numerik.
-        const ruleValue = String(rule.value);
-        const valueToCheck = String(sourceValue);
+        const ruleValue = rule.value;
+        let result = false;
 
-        switch (rule.operator) {
-            case '=':
-                return valueToCheck === ruleValue;
-            case '!=':
-                return valueToCheck !== ruleValue;
-            case '>':
-                return Number(valueToCheck) > Number(ruleValue);
-            case '<':
-                return Number(valueToCheck) < Number(ruleValue);
-            case '>=':
-                return Number(valueToCheck) >= Number(ruleValue);
-            case '<=':
-                return Number(valueToCheck) <= Number(ruleValue);
-            case 'contains':
-                return valueToCheck.includes(ruleValue);
-            case 'not contains':
-                return !valueToCheck.includes(ruleValue);
-            default:
-                return true; // Jika operator tidak dikenal, secara default tampilkan (atau bisa juga false).
+        try {
+            switch (rule.operator) {
+                case '>':
+                case '<':
+                case '>=':
+                case '<=':
+                    result = eval(`${Number(sourceValue)} ${rule.operator} ${Number(ruleValue)}`);
+                    break;
+                case '=':
+                case '!=':
+                    // Compare as numbers for facilities, otherwise as strings
+                    result =
+                        rule.source_type === 'borrower_facility'
+                            ? Number(sourceValue) == Number(ruleValue)
+                            : String(sourceValue) == String(ruleValue);
+                    if (rule.operator === '!=') result = !result;
+                    break;
+                case 'in':
+                    const listIn = String(ruleValue)
+                        .split(',')
+                        .map((item) => item.trim());
+                    result = listIn.includes(String(sourceValue));
+                    break;
+                case 'not_in':
+                    const listNotIn = String(ruleValue)
+                        .split(',')
+                        .map((item) => item.trim());
+                    result = !listNotIn.includes(String(sourceValue));
+                    break;
+                case 'contains':
+                    result = String(sourceValue).includes(String(ruleValue));
+                    break;
+                case 'not contains':
+                    result = !String(sourceValue).includes(String(ruleValue));
+                    break;
+                default:
+                    result = true;
+            }
+        } catch (e) {
+            console.error(`Error evaluating rule:`, { rule, sourceValue, error: e });
+            return false;
         }
+        return result;
     });
 };
 
-/**
- * Computed property untuk mendapatkan grup aspek yang pertanyaannya sudah difilter
- * berdasarkan visibility rules. Ini akan otomatis berjalan setiap kali ada perubahan
- * pada data yang menjadi trigger (misal: jawaban pertanyaan lain).
- */
 const visibleAspectGroups = computed(() => {
+    // Explicitly watch the store's total getters for reactivity
+    const _totalLimit = formStore.totalLimit;
+    const _totalOutstanding = formStore.totalOutstanding;
+    const _infoData = formStore.informationBorrower;
+
+    console.log(aspectGroups);
+
     return aspectGroups
-        .map((group) => {
-            return {
-                ...group,
-                // Filter aspek/pertanyaan di dalam setiap grup menggunakan fungsi isAspectVisible
-                aspects: group.aspects.filter((aspect) => isAspectVisible(aspect)),
-            };
-        })
-        .filter((group) => group.aspects.length > 0); // Sembunyikan grup jika tidak ada pertanyaan yang terlihat.
+        .filter((group) => isVisible(group))
+        .map((group) => ({
+            ...group,
+            aspects: group.aspects.filter((aspect) => isVisible(aspect)),
+        }))
+        .filter((group) => group.aspects.length > 0);
 });
 
-// --- AKHIR DARI LOGIKA BARU ---
+// --- END OF VISIBILITY LOGIC ---
 
-// Get available options for each question
 const getOptionsForQuestion = (aspect) => {
     if (aspect.options && aspect.options.length > 0) {
         return aspect.options;
@@ -168,7 +178,6 @@ const getOptionsForQuestion = (aspect) => {
     ];
 };
 
-// Watch for changes and sync with store
 watch(
     () => aspectGroups,
     (newAspectGroups) => {
@@ -181,7 +190,6 @@ watch(
     { deep: true },
 );
 
-// Form untuk submit data
 const form = useForm({
     aspects: [],
     report_meta: {
@@ -192,22 +200,18 @@ const form = useForm({
     report_id: props.reportId,
 });
 
-// Helper function to get selected option score
 const getSelectedOptionScore = (aspect) => {
     const options = getOptionsForQuestion(aspect);
     const selectedOption = options.find((opt) => opt.id === aspect.value);
     return selectedOption ? selectedOption.score : 0;
 };
 
-// Computed untuk validasi form
 const isFormValid = computed(() => {
-    // Validasi hanya pada pertanyaan yang terlihat (visible)
     return visibleAspectGroups.value.every((group) =>
         group.aspects.every((aspect) => !aspect.is_mandatory || (aspect.value !== null && aspect.value !== undefined)),
     );
 });
 
-// Computed untuk progress
 const completionProgress = computed(() => {
     const totalQuestions = visibleAspectGroups.value.reduce((total, group) => total + group.aspects.length, 0);
     if (totalQuestions === 0) return 0;
@@ -218,147 +222,66 @@ const completionProgress = computed(() => {
     return Math.round((answeredQuestions / totalQuestions) * 100);
 });
 
-// Fungsi untuk submit form ke backend
 const submitForm = async () => {
-    if (isSubmitting.value) return;
-
-    if (!isFormValid.value) {
-        toast.error('Mohon lengkapi semua pertanyaan yang wajib diisi');
+    if (isSubmitting.value || !isFormValid.value) {
+        if (!isFormValid.value) toast.error('Mohon lengkapi semua pertanyaan yang wajib diisi.');
         return;
     }
-
     isSubmitting.value = true;
 
-    try {
-        // Prepare data for submission from visible aspects only
-        const aspectsData = [];
-        visibleAspectGroups.value.forEach((group) => {
-            group.aspects.forEach((aspect) => {
-                if (aspect.value !== null && aspect.value !== undefined) {
-                    aspectsData.push({
-                        question_id: aspect.id,
-                        selected_option_id: aspect.value,
-                        notes: aspect.notes || null,
-                        score: getSelectedOptionScore(aspect),
-                        aspect_group_id: group.id,
-                    });
-                }
-            });
-        });
+    const aspectsData = visibleAspectGroups.value.flatMap((group) =>
+        group.aspects
+            .filter((aspect) => aspect.value !== null && aspect.value !== undefined)
+            .map((aspect) => ({
+                question_id: aspect.id,
+                selected_option_id: aspect.value,
+                notes: aspect.notes || null,
+                score: getSelectedOptionScore(aspect),
+                aspect_group_id: group.id,
+            })),
+    );
 
-        // Update form data
-        form.aspects = aspectsData;
-        form.report_meta = {
-            template_id: formStore.reportMeta.template_id,
-            period_id: formStore.reportMeta.period_id,
-            borrower_id: formStore.informationBorrower.borrowerId,
-        };
+    form.aspects = aspectsData;
+    form.report_meta = {
+        template_id: formStore.reportMeta.template_id,
+        period_id: formStore.reportMeta.period_id,
+        borrower_id: formStore.informationBorrower.borrowerId,
+    };
 
-        // Submit to backend
-        const endpoint = props.reportId ? route('aspects.update', props.reportId) : route('aspects.store');
-        const method = props.reportId ? 'put' : 'post';
+    const endpoint = props.reportId ? route('aspects.update', props.reportId) : route('aspects.store');
+    const method = props.reportId ? 'put' : 'post';
 
-        form[method](endpoint, {
-            onSuccess: (response) => {
-                toast.success(props.reportId ? 'Data aspek berhasil diperbarui' : 'Data aspek berhasil disimpan');
-                if (!props.reportId) {
-                    formStore.nextStep();
-                }
-            },
-            onError: (errors) => {
-                console.error('Submission errors:', errors);
-                let errorMessage = 'Gagal menyimpan data aspek. Periksa kembali isian Anda.';
-                toast.error(errorMessage);
-            },
-            onFinish: () => {
-                isSubmitting.value = false;
-            },
-        });
-    } catch (error) {
-        console.error('Submit error:', error);
-        toast.error('Terjadi kesalahan saat menyimpan data');
-        isSubmitting.value = false;
-    }
+    form[method](endpoint, {
+        onSuccess: () => {
+            toast.success(props.reportId ? 'Data aspek berhasil diperbarui' : 'Data aspek berhasil disimpan');
+            if (!props.reportId) formStore.nextStep();
+        },
+        onError: (errors) => {
+            console.error('Submission errors:', errors);
+            toast.error('Gagal menyimpan data aspek. Periksa kembali isian Anda.');
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
+        },
+    });
 };
 
-// Mendeteksi ukuran layar untuk responsivitas
 const isMobile = ref(false);
 const checkScreenSize = () => {
     isMobile.value = window.innerWidth < 768;
 };
+
 onMounted(() => {
     if (typeof window !== 'undefined') {
         checkScreenSize();
         window.addEventListener('resize', checkScreenSize);
+        // Backup logic...
     }
 });
 
-// Methods
-const generateReport = () => {
-    showReport.value = true;
-};
-const closeReport = () => {
-    showReport.value = false;
-};
-
-// Auto save functionality
-const autoSaveTimer = ref(null);
-const lastSaved = ref(null);
-
-const autoSave = () => {
-    if (autoSaveTimer.value) {
-        clearTimeout(autoSaveTimer.value);
-    }
-    autoSaveTimer.value = setTimeout(() => {
-        const aspectsBackup = {
-            timestamp: Date.now(),
-            data: aspectGroups.map((group) => ({
-                id: group.id,
-                aspects: group.aspects.map((aspect) => ({
-                    id: aspect.id,
-                    value: aspect.value,
-                    notes: aspect.notes,
-                })),
-            })),
-        };
-        localStorage.setItem('aspects_backup', JSON.stringify(aspectsBackup));
-        lastSaved.value = new Date();
-    }, 2000);
-};
-
-watch(() => aspectGroups, autoSave, { deep: true });
-
-onMounted(() => {
-    const backup = localStorage.getItem('aspects_backup');
-    if (backup) {
-        try {
-            const parsedBackup = JSON.parse(backup);
-            if (Date.now() - parsedBackup.timestamp < 24 * 60 * 60 * 1000) {
-                parsedBackup.data.forEach((groupBackup) => {
-                    const group = aspectGroups.find((g) => g.id === groupBackup.id);
-                    if (group) {
-                        groupBackup.aspects.forEach((aspectBackup) => {
-                            const aspect = group.aspects.find((a) => a.id === aspectBackup.id);
-                            if (aspect && (aspect.value === null || aspect.value === undefined)) {
-                                aspect.value = aspectBackup.value;
-                                aspect.notes = aspectBackup.notes;
-                            }
-                        });
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('Error loading backup:', error);
-        }
-    }
-});
-
-// Expose methods for parent component
-defineExpose({
-    submitForm,
-    isFormValid,
-    completionProgress,
-});
+// Other methods...
+const generateReport = () => (showReport.value = true);
+const closeReport = () => (showReport.value = false);
 </script>
 
 <template>

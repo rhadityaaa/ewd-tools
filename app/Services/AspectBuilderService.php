@@ -5,10 +5,18 @@ namespace App\Services;
 use App\Models\Aspect;
 use App\Models\AspectVersion;
 use App\Models\Question;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class AspectBuilderService
 {
+    public function getAllAspects(): Collection
+    {
+        $aspects = Aspect::with('latestAspectVersion')->latest()->get();
+
+        return $aspects;
+    }
+
     public function createAspectWithQuestions(array $data): Aspect
     {
         return DB::transaction(function () use ($data) {

@@ -4,15 +4,25 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\TemplateRequest;
 use App\Http\Resources\TemplateResource;
+use App\Services\AspectBuilderService;
+use App\Services\TemplateBuilderService;
 use App\Services\TemplateService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class TemplateController extends Controller
 {
+    protected $templateService;
+    protected $aspectService;
+
     public function __construct(
-        protected TemplateService $templateService
-    ) {}
+        TemplateBuilderService $templateService,
+        AspectBuilderService $aspectService,
+    )
+    {
+        $this->templateService = $templateService;
+        $this->aspectService = $aspectService;
+    }
 
     public function index()
     {
@@ -25,7 +35,11 @@ class TemplateController extends Controller
 
     public function create()
     {
-        return Inertia::render('template/Create');
+        $aspects = $this->aspectService->getAllAspects();
+
+        return Inertia::render('template/Create', [
+            'aspects' => $aspects
+        ]);
     }
 
     public function store(TemplateRequest $request)

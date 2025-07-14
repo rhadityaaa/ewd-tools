@@ -109,4 +109,10 @@ export interface Template {
     name: string;
 }
 
+export interface Aspect {
+    id: number;
+    code: string;
+    latest_aspect_version: any;
+}
+
 export type BreadcrumbItemType = BreadcrumbItem;

@@ -126,4 +126,44 @@ export const useFormStore = defineStore('form', {
             this.reportMeta = { ...this.reportMeta, ...payload };
         },
     },
+
+    getters: {
+        /**
+         * Menghitung jumlah total dari sebuah kolom numerik di semua fasilitas.
+         * @param state - State Pinia.
+         * @returns {function(keyof FacilityState): number} - Fungsi yang menerima nama kolom dan mengembalikan totalnya.
+         */
+        getTotalByKey: (state) => {
+            return (key: keyof FacilityState): number => {
+                return state.facilitiesBorrower.reduce((total, facility) => {
+                    const value = facility[key];
+                    return total + (typeof value === 'number' ? value : 0);
+                }, 0);
+            };
+        },
+
+        // Getters spesifik untuk kemudahan akses di komponen
+        totalLimit(): number {
+            return this.getTotalByKey('limit');
+        },
+        totalOutstanding(): number {
+            return this.getTotalByKey('outstanding');
+        },
+        totalPrincipalArrears(): number {
+            return this.getTotalByKey('principalArrears');
+        },
+        totalInterestArrears(): number {
+            return this.getTotalByKey('interestArrears');
+        },
+        totalPdo(): number {
+            return this.getTotalByKey('pdo');
+        },
+
+        /**
+         * Menghitung jumlah fasilitas yang ada.
+         */
+        totalFacilities(): number {
+            return this.facilitiesBorrower.length;
+        },
+    },
 });

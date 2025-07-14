@@ -15,7 +15,10 @@ const toast = useToast();
 const formStore = useFormStore();
 
 const props = defineProps({
-    borrowers: Object,
+    borrowers: {
+        type: Object,
+        default: null,
+    },
     borrower_id: {
         type: Number,
         default: null,

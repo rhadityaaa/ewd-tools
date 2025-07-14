@@ -5,37 +5,31 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class AspectVersion extends Model
+class TemplateVersion extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'aspect_id',
+        'template_id',
         'version_number',
-        'name',
         'description',
         'effective_from',
     ];
 
     protected $casts = [
-        'effective_from' => 'datetime', 
+        'effective_from' => 'datetime',
     ];
 
-    public function aspect()
+    public function template()
     {
-        return $this->belongsTo(Aspect::class);
+        return $this->belongsTo(Template::class);
     }
 
-    public function templates()
+    public function aspectVersions()
     {
-        return $this->belongsToMany(TemplateVersion::class)
+        return $this->belongsToMany(AspectVersion::class)
                     ->withPivot('weight')
                     ->withTimestamps();
-    }
-
-    public function questionVersions()
-    {
-        return $this->hasMany(QuestionVersion::class);
     }
 
     public function visibilityRules()
