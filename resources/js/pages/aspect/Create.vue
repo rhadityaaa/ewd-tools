@@ -79,6 +79,29 @@ const sourceTypeOptions = [
     },
 ];
 
+// Map source types to their corresponding field options
+const sourceFieldOptionsMap = {
+    borrower_detail: [
+        { value: 'borrower_group', label: 'Grup Debitur' },
+        { value: 'purpose', label: 'Tujuan Penggunaan' },
+        { value: 'economic_sector', label: 'Sektor Ekonomi' },
+        { value: 'business_field', label: 'Bidang Usaha' },
+        { value: 'borrower_business', label: 'Jenis Usaha Debitur' },
+        { value: 'collectibility', label: 'Kolektibilitas' },
+        { value: 'restructuring', label: 'Restrukturisasi' },
+    ],
+    borrower_facility: [
+        { value: 'facility_name', label: 'Nama Fasilitas' },
+        { value: 'limit', label: 'Limit' },
+        { value: 'outstanding', label: 'Outstanding' },
+        { value: 'interest_rate', label: 'Suku Bunga' },
+        { value: 'principal_arrears', label: 'Tunggakan Pokok' },
+        { value: 'interest_arrears', label: 'Tunggakan Bunga' },
+        { value: 'pdo_days', label: 'Hari PDO' },
+        { value: 'maturity_date', label: 'Tanggal Jatuh Tempo' },
+    ],
+};
+
 const operatorOptions = [
     { value: '=', label: 'Sama dengan (=)' },
     { value: '!=', label: 'Tidak sama dengan (!=)' },
@@ -89,6 +112,24 @@ const operatorOptions = [
     { value: 'in', label: 'Termasuk dalam (in)' },
     { value: 'not_in', label: 'Tidak termasuk dalam (not in)' },
 ];
+
+// Function to get the correct source field options based on source type and question context
+const getSourceFieldOptions = (sourceType: string, currentQuestionIndex: number) => {
+    if (sourceType === 'borrower_detail' || sourceType === 'borrower_facility') {
+        return sourceFieldOptionsMap[sourceType] || [];
+    }
+    if (sourceType === 'answer') {
+        // Return other questions as options, excluding the current one
+        return form.questions
+            .map((q, index) => ({
+                // The backend will need to resolve this index to the actual question_id upon saving
+                value: `question_id_${index}`,
+                label: q.question_text.trim() ? `Jawaban untuk: "${q.question_text.substring(0, 30)}..."` : `Jawaban Pertanyaan ${index + 1}`,
+            }))
+            .filter((_, index) => index !== currentQuestionIndex);
+    }
+    return [];
+};
 
 const totalWeight = computed(() => {
     return form.questions.reduce((sum, q) => sum + Number(q.weight), 0);
@@ -107,7 +148,7 @@ const weightStatus = computed(() => {
 const addQuestion = () => {
     form.questions.push({
         question_text: '',
-        weight: 100,
+        weight: 0, // Default to 0 to encourage manual adjustment
         max_score: 100,
         min_score: 0,
         is_mandatory: false,
@@ -138,7 +179,7 @@ const removeQuestion = (index: number) => {
 const addVisibilityRule = (questionIndex: number) => {
     form.questions[questionIndex].visibility_rules.push({
         description: '',
-        source_type: 'borrower_detail',
+        source_type: '',
         source_field: '',
         operator: '=',
         value: '',
@@ -166,7 +207,8 @@ const submit = () => {
             toast.success('Aspek berhasil dibuat!');
         },
         onError: (errors) => {
-            toast.error(errors);
+            console.error('Submission Error:', errors);
+            toast.error('Terjadi kesalahan. Periksa kembali isian form Anda.');
         },
     });
 };
@@ -178,7 +220,6 @@ const submit = () => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="py-6 lg:py-8">
             <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-                <!-- Header Section -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between">
                         <div>
@@ -193,7 +234,6 @@ const submit = () => {
                     </div>
                 </div>
 
-                <!-- Weight Status Alert -->
                 <Alert v-if="!isWeightValid" class="mb-6" variant="destructive">
                     <AlertCircle class="h-4 w-4" />
                     <AlertDescription>
@@ -203,7 +243,6 @@ const submit = () => {
                 </Alert>
 
                 <form @submit.prevent="submit" class="space-y-8">
-                    <!-- Basic Information -->
                     <Card>
                         <CardHeader>
                             <CardTitle class="flex items-center text-lg">
@@ -250,7 +289,6 @@ const submit = () => {
                         </CardContent>
                     </Card>
 
-                    <!-- Questions Section -->
                     <Card>
                         <CardHeader>
                             <div class="flex items-center justify-between">
@@ -277,7 +315,6 @@ const submit = () => {
                                     :key="qIndex"
                                     class="group relative rounded-lg border-2 border-dashed border-gray-200 p-6 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50/50"
                                 >
-                                    <!-- Question Header -->
                                     <div class="mb-6 flex items-center justify-between">
                                         <div class="flex items-center space-x-3">
                                             <Badge variant="outline" class="text-xs"> Pertanyaan {{ qIndex + 1 }} </Badge>
@@ -289,14 +326,13 @@ const submit = () => {
                                             type="button"
                                             @click="removeQuestion(qIndex)"
                                             variant="destructive"
-                                            size="sm"
-                                            class="opacity-0 transition-all duration-200 group-hover:opacity-100"
+                                            size="icon"
+                                            class="h-7 w-7 opacity-0 transition-all duration-200 group-hover:opacity-100"
                                         >
                                             <Trash2 class="h-4 w-4" />
                                         </Button>
                                     </div>
 
-                                    <!-- Question Text -->
                                     <div class="mb-6 space-y-2">
                                         <Label class="text-sm font-medium"> Teks Pertanyaan <span class="text-red-500">*</span> </Label>
                                         <Textarea
@@ -309,7 +345,6 @@ const submit = () => {
                                         <InputError :message="(form.errors as any)[`questions.${qIndex}.question_text`]" />
                                     </div>
 
-                                    <!-- Question Settings -->
                                     <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
                                         <div class="space-y-2">
                                             <Label class="text-sm font-medium">Bobot (%)</Label>
@@ -346,15 +381,14 @@ const submit = () => {
                                             />
                                             <InputError :message="(form.errors as any)[`questions.${qIndex}.min_score`]" />
                                         </div>
-                                        <div class="flex items-center justify-center space-x-2">
-                                            <Checkbox v-model:checked="question.is_mandatory" id="`mandatory-${qIndex}`" />
+                                        <div class="flex items-center justify-start space-x-2 pt-6">
+                                            <Checkbox :id="`mandatory-${qIndex}`" v-model:checked="question.is_mandatory" />
                                             <Label :for="`mandatory-${qIndex}`" class="text-sm font-medium"> Pertanyaan Wajib </Label>
                                         </div>
                                     </div>
 
                                     <Separator class="my-6" />
 
-                                    <!-- Answer Options -->
                                     <div class="mb-6 space-y-4">
                                         <div class="flex items-center justify-between">
                                             <Label class="text-sm font-medium">Opsi Jawaban</Label>
@@ -369,16 +403,13 @@ const submit = () => {
                                                 Tambah Opsi
                                             </Button>
                                         </div>
-
                                         <div class="space-y-3">
                                             <div
                                                 v-for="(option, oIndex) in question.options"
                                                 :key="oIndex"
                                                 class="flex items-center space-x-3 rounded-lg border bg-white p-3 transition-all duration-200 hover:shadow-sm"
                                             >
-                                                <Badge variant="outline" class="text-xs">
-                                                    {{ oIndex + 1 }}
-                                                </Badge>
+                                                <Badge variant="outline" class="text-xs"> {{ oIndex + 1 }} </Badge>
                                                 <Input
                                                     v-model="option.option_text"
                                                     placeholder="Teks opsi jawaban"
@@ -397,11 +428,11 @@ const submit = () => {
                                                     v-if="question.options.length > 1"
                                                     type="button"
                                                     @click="removeOption(qIndex, oIndex)"
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    class="transition-all duration-200 hover:scale-105"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    class="h-7 w-7 text-red-500 hover:bg-red-50 hover:text-red-600"
                                                 >
-                                                    <Trash2 class="h-3 w-3" />
+                                                    <Trash2 class="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -409,7 +440,6 @@ const submit = () => {
 
                                     <Separator class="my-6" />
 
-                                    <!-- Visibility Rules -->
                                     <div class="space-y-4">
                                         <div class="flex items-center justify-between">
                                             <Label class="text-sm font-medium">Aturan Visibilitas</Label>
@@ -442,12 +472,12 @@ const submit = () => {
                                                     <Badge variant="secondary" class="text-xs"> Aturan {{ ruleIndex + 1 }} </Badge>
                                                     <Button
                                                         type="button"
-                                                        variant="destructive"
-                                                        size="sm"
+                                                        variant="ghost"
+                                                        size="icon"
                                                         @click="removeVisibilityRule(qIndex, ruleIndex)"
-                                                        class="transition-all duration-200 hover:scale-105"
+                                                        class="h-7 w-7 text-red-500 hover:bg-red-50 hover:text-red-600"
                                                     >
-                                                        <Trash2 class="h-3 w-3" />
+                                                        <Trash2 class="h-4 w-4" />
                                                     </Button>
                                                 </div>
 
@@ -459,7 +489,7 @@ const submit = () => {
                                                         <Input
                                                             :id="`rule-description-${qIndex}-${ruleIndex}`"
                                                             v-model="rule.description"
-                                                            placeholder="Deskripsi aturan visibilitas"
+                                                            placeholder="Deskripsi aturan visibilitas (opsional)"
                                                             class="transition-all duration-200 focus:ring-2"
                                                         />
                                                     </div>
@@ -469,7 +499,15 @@ const submit = () => {
                                                             <Label :for="`rule-source-type-${qIndex}-${ruleIndex}`" class="text-sm font-medium">
                                                                 Tipe Sumber
                                                             </Label>
-                                                            <Select v-model="rule.source_type">
+                                                            <Select
+                                                                :model-value="rule.source_type"
+                                                                @update:model-value="
+                                                                    (newValue) => {
+                                                                        rule.source_type = newValue as string;
+                                                                        rule.source_field = ''; // Reset dependent field
+                                                                    }
+                                                                "
+                                                            >
                                                                 <SelectTrigger
                                                                     :id="`rule-source-type-${qIndex}-${ruleIndex}`"
                                                                     class="transition-all duration-200 focus:ring-2"
@@ -492,13 +530,35 @@ const submit = () => {
                                                             <Label :for="`rule-source-field-${qIndex}-${ruleIndex}`" class="text-sm font-medium">
                                                                 Field Sumber
                                                             </Label>
-                                                            <Input
-                                                                :id="`rule-source-field-${qIndex}-${ruleIndex}`"
-                                                                v-model="rule.source_field"
-                                                                placeholder="Nama field"
-                                                                required
-                                                                class="transition-all duration-200 focus:ring-2"
-                                                            />
+                                                            <template v-if="getSourceFieldOptions(rule.source_type, qIndex).length > 0">
+                                                                <Select v-model="rule.source_field">
+                                                                    <SelectTrigger
+                                                                        :id="`rule-source-field-${qIndex}-${ruleIndex}`"
+                                                                        class="transition-all duration-200 focus:ring-2"
+                                                                    >
+                                                                        <SelectValue placeholder="Pilih field sumber" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem
+                                                                            v-for="option in getSourceFieldOptions(rule.source_type, qIndex)"
+                                                                            :key="option.value"
+                                                                            :value="option.value"
+                                                                        >
+                                                                            {{ option.label }}
+                                                                        </SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </template>
+                                                            <template v-else>
+                                                                <Input
+                                                                    :id="`rule-source-field-${qIndex}-${ruleIndex}`"
+                                                                    v-model="rule.source_field"
+                                                                    placeholder="Pilih Tipe Sumber Dahulu"
+                                                                    required
+                                                                    :disabled="!rule.source_type"
+                                                                    class="transition-all duration-200 focus:ring-2"
+                                                                />
+                                                            </template>
                                                         </div>
                                                     </div>
 
@@ -548,7 +608,6 @@ const submit = () => {
                         </CardContent>
                     </Card>
 
-                    <!-- Action Buttons -->
                     <div class="flex flex-col-reverse gap-4 sm:flex-row sm:justify-end">
                         <Link :href="route('aspects.index')">
                             <Button type="button" variant="outline" class="w-full transition-all duration-200 hover:scale-105 sm:w-auto">

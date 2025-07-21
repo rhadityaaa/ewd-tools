@@ -27,7 +27,7 @@ class TemplateVersion extends Model
 
     public function aspectVersions()
     {
-        return $this->belongsToMany(AspectVersion::class)
+        return $this->belongsToMany(AspectVersion::class, 'aspect_template_versions')
                     ->withPivot('weight')
                     ->withTimestamps();
     }

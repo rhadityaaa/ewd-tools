@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Label } from '@/components/ui/label';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useToast } from 'vue-toastification';
 
 const toast = useToast();
@@ -14,32 +14,65 @@ const props = defineProps({
         type: Number,
         required: true,
     },
+    summaryCalculation: {
+        type: Object,
+        required: true,
+    },
 });
 
 const formData = ref({
-    borrowerName: 'BARASENTOSA LESTARI',
-    period: 'IV 2024',
-    aspects: [
-        { id: 'A', name: 'HUKUM', classification: 'SAFE' },
-        { id: 'B', name: 'MANAJEMEN', classification: 'SAFE' },
-        { id: 'C', name: 'AGUNAN/JAMINAN', classification: 'WARNING' },
-        { id: 'D', name: 'KEUANGAN', classification: 'WARNING' },
-        { id: 'E', name: 'PEMASARAN', classification: 'SAFE' },
-        { id: 'F', name: 'AMDAL', classification: 'WARNING' },
-        { id: 'G', name: 'LAINNYA', classification: 'SAFE' },
-    ],
-    businessNotes: '',
-    override: false,
-    collectibilityIndicator: 0,
-    reviewerNotes: '',
+    borrowerName: props.reportData.borrower?.name || 'N/A',
+    period: props.reportData.period?.name || 'N/A',
+    businessNotes: props.reportData.summary?.business_notes || '',
+    override: props.reportData.summary?.is_override || false,
+    collectibilityIndicator: props.reportData.summary?.indicative_collectibility || 0,
+    reviewerNotes: props.reportData.summary?.reviewer_notes || '',
 });
 
+// Computed untuk aspek dari hasil perhitungan
+const aspects = computed(() => {
+    return props.summaryCalculation.aspects.map((aspect: any) => ({
+        id: aspect.aspect_code,
+        name: aspect.aspect_name,
+        classification: aspect.classification,
+        totalScore: aspect.total_score,
+        maxScore: aspect.max_score,
+        percentage: aspect.percentage,
+        weight: aspect.weight,
+        weightedScore: aspect.weighted_score
+    }));
+});
+
+// Computed untuk summary keseluruhan
+const overallSummary = computed(() => props.summaryCalculation.summary);
+
 const getClassificationColor = (classification: any) => {
-    return classification === 'SAFE' ? 'text-green-600' : 'text-red-600';
+    switch(classification) {
+        case 'SAFE': return 'text-green-600';
+        case 'WARNING': return 'text-yellow-600';
+        case 'CRITICAL': return 'text-red-600';
+        default: return 'text-gray-600';
+    }
 };
 
 const getClassificationBg = (classification: any) => {
-    return classification === 'SAFE' ? 'bg-green-100' : 'bg-red-100';
+    switch(classification) {
+        case 'SAFE': return 'bg-green-100';
+        case 'WARNING': return 'bg-yellow-100';
+        case 'CRITICAL': return 'bg-red-100';
+        default: return 'bg-gray-100';
+    }
+};
+
+const getCollectibilityText = (level: number) => {
+    const levels = {
+        0: 'Current',
+        1: 'Special Mention',
+        2: 'Substandard',
+        3: 'Doubtful',
+        4: 'Loss'
+    };
+    return levels[level as keyof typeof levels] || 'Unknown';
 };
 </script>
 
@@ -69,35 +102,101 @@ const getClassificationBg = (classification: any) => {
                 </div>
             </div>
 
-            <!-- Aspect Classification Table (Read-only) -->
+            <!-- Overall Summary -->
             <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
+                <h2 class="mb-4 text-lg font-semibold text-gray-800">Ringkasan Keseluruhan</h2>
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <div class="text-center">
+                        <Label class="text-sm font-medium text-gray-600">Total Skor Berbobot</Label>
+                        <div class="mt-1 text-2xl font-bold text-blue-600">
+                            {{ overallSummary.total_weighted_score }}/{{ overallSummary.max_weighted_score }}
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <Label class="text-sm font-medium text-gray-600">Persentase Keseluruhan</Label>
+                        <div class="mt-1 text-2xl font-bold text-blue-600">
+                            {{ overallSummary.overall_percentage }}%
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <Label class="text-sm font-medium text-gray-600">Risk Level</Label>
+                        <div class="mt-1 text-lg font-bold" :class="{
+                            'text-green-600': overallSummary.risk_level === 'low',
+                            'text-yellow-600': overallSummary.risk_level === 'medium',
+                            'text-red-600': overallSummary.risk_level === 'high'
+                        }">
+                            {{ overallSummary.risk_level.toUpperCase() }}
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <Label class="text-sm font-medium text-gray-600">Klasifikasi Final</Label>
+                        <div class="mt-1">
+                            <span :class="[
+                                'inline-block rounded-full px-3 py-1 text-sm font-semibold',
+                                getClassificationBg(overallSummary.final_classification),
+                                getClassificationColor(overallSummary.final_classification)
+                            ]">
+                                {{ overallSummary.final_classification }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aspect Classification Table dengan Detail Skor -->
+            <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
+                <h2 class="mb-4 text-lg font-semibold text-gray-800">Klasifikasi Aspek dengan Detail Perhitungan</h2>
                 <div class="overflow-x-auto">
                     <table class="w-full border-collapse border border-gray-300">
                         <thead>
                             <tr class="bg-gray-100">
                                 <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">Aspect ID</th>
                                 <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">Aspect Name</th>
+                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Skor Total</th>
+                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Persentase</th>
+                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Bobot Template</th>
+                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Skor Berbobot</th>
                                 <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Classification</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="aspect in formData.aspects" :key="aspect.id" class="bg-gray-50">
+                            <tr v-for="aspect in aspects" :key="aspect.id" class="bg-gray-50">
                                 <td class="border border-gray-300 px-4 py-3 text-center font-mono font-semibold text-gray-700">{{ aspect.id }}</td>
                                 <td class="border border-gray-300 px-4 py-3 text-gray-700">{{ aspect.name }}</td>
+                                <td class="border border-gray-300 px-4 py-3 text-center text-sm">
+                                    <div class="font-semibold">{{ aspect.totalScore }}/{{ aspect.maxScore }}</div>
+                                </td>
                                 <td class="border border-gray-300 px-4 py-3 text-center">
-                                    <span
-                                        :class="[
-                                            'inline-block rounded-full px-3 py-1 text-sm font-semibold',
-                                            getClassificationBg(aspect.classification),
-                                            getClassificationColor(aspect.classification),
-                                        ]"
-                                    >
+                                    <div class="font-semibold text-blue-600">{{ aspect.percentage }}%</div>
+                                </td>
+                                <td class="border border-gray-300 px-4 py-3 text-center">
+                                    <div class="font-semibold text-purple-600">{{ aspect.weight }}%</div>
+                                </td>
+                                <td class="border border-gray-300 px-4 py-3 text-center">
+                                    <div class="font-semibold text-indigo-600">{{ aspect.weightedScore }}</div>
+                                </td>
+                                <td class="border border-gray-300 px-4 py-3 text-center">
+                                    <span :class="[
+                                        'inline-block rounded-full px-3 py-1 text-sm font-semibold',
+                                        getClassificationBg(aspect.classification),
+                                        getClassificationColor(aspect.classification)
+                                    ]">
                                         {{ aspect.classification }}
                                     </span>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-4 text-sm text-gray-600">
+                    <p><strong>Keterangan:</strong></p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Skor Total:</strong> Hasil penjumlahan (skor pertanyaan × bobot pertanyaan) untuk semua pertanyaan dalam aspek</li>
+                        <li><strong>Persentase:</strong> (Skor Total / Skor Maksimal) × 100%</li>
+                        <li><strong>Bobot Template:</strong> Bobot aspek sesuai template yang digunakan</li>
+                        <li><strong>Skor Berbobot:</strong> (Persentase / 100) × Bobot Template</li>
+                        <li><strong>Klasifikasi:</strong> SAFE (≥80%), WARNING (60-79%), CRITICAL (<60%)</li>
+                    </ul>
                 </div>
             </div>
 
@@ -131,26 +230,15 @@ const getClassificationBg = (classification: any) => {
                 </div>
 
                 <!-- Collectibility Indicator (Read-only) -->
-                <div class="rounded-lg bg-white p-6 shadow-sm">
+                <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
                     <h2 class="mb-4 text-lg font-semibold text-gray-800">Collectibility Indicator</h2>
                     <div class="flex items-center space-x-3">
                         <Label class="text-sm font-medium text-gray-700">Level:</Label>
                         <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">
-                            {{ formData.collectibilityIndicator }} -
-                            {{
-                                formData.collectibilityIndicator === 0
-                                    ? 'Current'
-                                    : formData.collectibilityIndicator === 1
-                                      ? 'Special Mention'
-                                      : formData.collectibilityIndicator === 2
-                                        ? 'Substandard'
-                                        : formData.collectibilityIndicator === 3
-                                          ? 'Doubtful'
-                                          : 'Loss'
-                            }}
+                            {{ overallSummary.collectibility }} - {{ getCollectibilityText(overallSummary.collectibility) }}
                         </div>
                     </div>
-                    <p class="mt-2 text-xs text-gray-400">This indicator is read-only in summary view.</p>
+                    <p class="mt-2 text-xs text-gray-400">Indikator ini dihitung otomatis berdasarkan persentase skor keseluruhan.</p>
                 </div>
             </div>
 

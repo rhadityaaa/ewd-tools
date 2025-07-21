@@ -8,6 +8,7 @@ use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\PeriodController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SummaryController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -34,12 +35,13 @@ Route::post('periods/{period}/end', [PeriodController::class,'stop'])->name('per
 Route::post('periods/check-expired', [PeriodController::class, 'checkExpiredPeriods'])->name('periods.check-expired');
 Route::post('periods/{period}/extend',[PeriodController::class,'extend'])->name('periods.extend');
 
-Route::get('forms', [FormController::class, 'index'])->name('forms');
-Route::post('forms/submit', [FormController::class, 'submitAll'])->name('forms.submit');
+Route::middleware(['auth', 'check.active.period'])->group(function () {
+    Route::get('/forms', [FormController::class, 'index'])->name('forms.index');
+    Route::post('/forms/save-step', [FormController::class, 'saveStepData'])->name('forms.save-step');
+    Route::post('/forms/submit', [FormController::class, 'submitAll'])->name('forms.submit');
+});
 
-Route::get('summary', function () {
-    return Inertia::render('Summary');
-})->name('summary');
+Route::get('summary', [SummaryController::class, 'show'])->name('summary');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

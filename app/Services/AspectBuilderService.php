@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Aspect;
 use App\Models\AspectVersion;
 use App\Models\Question;
+use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AspectBuilderService
 {
@@ -19,7 +21,8 @@ class AspectBuilderService
 
     public function createAspectWithQuestions(array $data): Aspect
     {
-        return DB::transaction(function () use ($data) {
+        try {
+            return DB::transaction(function () use ($data) {
             $aspect = Aspect::create(['code' => $data['code']]);
 
             $aspectVersion = $aspect->aspectVersions()->create([
@@ -35,6 +38,13 @@ class AspectBuilderService
 
             return $aspect;
         });
+        } catch (Exception $e) {
+            Log::error('Failed to create aspect with questions', [
+                'data' => $data,
+                'error' => $e->getMessage()
+            ]);
+            throw new Exception('Failed to create aspect: ' . $e->getMessage());
+        }
     }
 
     public function updateAspectWithQuestions(Aspect $aspect, array $data): Aspect

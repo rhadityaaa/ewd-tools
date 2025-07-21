@@ -6,6 +6,9 @@ use App\Models\Period;
 use App\Enum\Status;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class PeriodService
 {
@@ -41,17 +44,35 @@ class PeriodService
 
     public function updatePeriod(Period $period, array $data): Period
     {
-        $startDate = $this->combineDateTime($data['start_date'], $data['start_time'] ?? '00:00:00');
-        $endDate = isset($data['end_date']) ? $this->combineDateTime($data['end_date'], $data['end_time'] ?? '23:59:59') : null;
+        if (isset($data['status']) && Status::from($data['status']) !== $period->status) {
+            $newStatus = Status::from($data['status']);
 
-        $period->update([
-            'name' => $data['name'],
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'status' => Status::from($data['status']),
-        ]);
+            match ($newStatus) {
+                Status::ACTIVE  => $this->markAsActive($period),
+                Status::DRAFT   => $this->markAsDraft($period),
+                Status::ENDED   => $this->markAsEnded($period),
+                Status::EXPIRED => $this->markAsExpired($period),
+            };
+        }
 
-        return $period;
+        $updateData = $data;
+        unset($updateData['status']);
+
+        if (isset($updateData['start_date'])) {
+            $updateData['start_date'] = $this->combineDateTime($updateData['start_date'], $updateData['start_time'] ?? '00:00:00');
+        }
+        if (isset($updateData['end_date'])) {
+            $updateData['end_date'] = $this->combineDateTime($updateData['end_date'], $updateData['end_time'] ?? '23:59:59');
+        }
+
+        unset($updateData['start_time']);
+    unset($updateData['end_time']);
+
+         if (!empty($updateData)) {
+        $period->update($updateData);
+    }   
+
+        return $period->fresh();
     }
 
     public function deletePeriod(Period $period): void
@@ -61,9 +82,20 @@ class PeriodService
 
     public function markAsActive(Period $period): void
     {
+        $activePeriodExists = Period::where('status', Status::ACTIVE)
+                                    ->where('id', '!=', $period->id)
+                                    ->exists();
+
+        if ($activePeriodExists) {
+            throw ValidationException::withMessages([
+                'error' => 'Tidak bisa memulai periode baru. Harap selesaikan periode yang sedang aktif terlebih dahulu.',
+            ]);
+        }
+        
         $period->status = Status::ACTIVE;
-        $period->start_date = now();
         $period->save();
+
+        Cache::forget('active_period');
     }
 
     public function markAsDraft(Period $period): void
@@ -114,15 +146,20 @@ class PeriodService
         return $period;
     }
 
-    public function checkAndMarkExpiredPeriods(): void
+    public function checkAndMarkExpiredPeriods(): int
     {
-        $periods = Period::where('status', Status::ACTIVE)->get();
+        $expiredPeriods = Period::where('status', Status::ACTIVE)
+            ->where('end_date', '<', now())
+            ->get();
 
-        foreach ($periods as $period) {
-            if ($period->end_date && $period->end_date->lt(now())) {
-                $this->markAsExpired($period);
-            }
+        $count = 0;
+        foreach ($expiredPeriods as $period) {
+            $this->markAsExpired($period);
+            $count++;
+            Log::info("Period '{$period->name}' (ID: {$period->id}) automatically marked as expired");
         }
+
+        return $count;
     }
 
     public function combineDateTime(string $date, string $time): Carbon

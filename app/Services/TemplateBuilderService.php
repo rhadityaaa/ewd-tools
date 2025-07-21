@@ -51,42 +51,82 @@ class TemplateBuilderService
     public function updateTemplate(Template $template, array $data): Template
     {
         return DB::transaction(function () use ($template, $data) {
-            if (isset($data['name'])) {
-                $template->update(['name' => $data['name']]);
+            // Update template name
+            $template->update(['name' => $data['name']]);
+
+            // Get or create new version
+            $latestVersion = $template->latestVersion;
+            
+            // Create new version if description changed or aspects changed
+            $needsNewVersion = (
+                $latestVersion->description !== ($data['description'] ?? null) ||
+                $this->aspectsChanged($latestVersion, $data['selected_aspects'] ?? [])
+            );
+
+            if ($needsNewVersion) {
+                $templateVersion = $template->templateVersions()->create([
+                    'version_number' => $latestVersion->version_number + 1,
+                    'description' => $data['description'] ?? null,
+                    'effective_from' => now(),
+                ]);
+            } else {
+                $templateVersion = $latestVersion;
+                $templateVersion->update([
+                    'description' => $data['description'] ?? null,
+                ]);
             }
 
-            $latestVersion = $template->latestVersion;
-            $newVersionNumber = $latestVersion ? $latestVersion->version_number + 1 : 1;
-
-            $newTemplateVersion = $template->templateVersions()->create([
-                'version_number' => $newVersionNumber,
-                'description' => $data['description'] ?? null,
-                'effective_from' => now(),
-            ]);
-
+            // Update aspects
             if (!empty($data['selected_aspects'])) {
                 $pivotData = $this->prepareAspectPivotData($data['selected_aspects']);
-                $newTemplateVersion->aspectVersions()->sync($pivotData);
+                $templateVersion->aspectVersions()->sync($pivotData);
+            } else {
+                $templateVersion->aspectVersions()->detach();
             }
 
+            // Update visibility rules
+            $templateVersion->visibilityRules()->delete();
             if (!empty($data['visibility_rules'])) {
-                $newTemplateVersion->visibilityRules()->createMany($data['visibility_rules']);
+                $templateVersion->visibilityRules()->createMany($data['visibility_rules']);
             }
 
             return $template->load('latestVersion.aspectVersions');
         });
     }
 
+    private function aspectsChanged($templateVersion, $newAspects): bool
+    {
+        $currentAspects = $templateVersion->aspectVersions->map(function($av) {
+            return [
+                'id' => $av->aspect_id,
+                'weight' => $av->pivot->weight
+            ];
+        })->sortBy('id')->values()->toArray();
+        
+        $newAspectsFormatted = collect($newAspects)->sortBy('id')->values()->toArray();
+        
+        return $currentAspects !== $newAspectsFormatted;
+    }
+
     public function deleteTemplate(Template $template): void
     {
-        $template->delete();
+        DB::transaction(function () use ($template) {
+            // Delete all template versions and related data
+            foreach ($template->templateVersions as $version) {
+                $version->aspectVersions()->detach();
+                $version->visibilityRules()->delete();
+                $version->delete();
+            }
+            
+            $template->delete();
+        });
     }
 
     private function prepareAspectPivotData(array $selectedAspects): Array
     {
         return collect($selectedAspects)->mapWithKeys(function ($selectedAspect) {
             $aspect = Aspect::find($selectedAspect['id']);
-            $latestAspectVersion = $aspect->latestVersion;
+            $latestAspectVersion = $aspect->latestAspectVersion;
 
             if (!$latestAspectVersion) {
                 throw new Exception("Aspek '{$aspect->name}' tidak memiliki versi yang bisa digunakan.");

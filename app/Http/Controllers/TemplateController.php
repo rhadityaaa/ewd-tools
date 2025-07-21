@@ -6,7 +6,6 @@ use App\Http\Requests\TemplateRequest;
 use App\Http\Resources\TemplateResource;
 use App\Services\AspectBuilderService;
 use App\Services\TemplateBuilderService;
-use App\Services\TemplateService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -46,42 +45,50 @@ class TemplateController extends Controller
     {
         $this->templateService->createTemplate($request->validated());
 
-        return redirect()->route('templates.index')->with('success', 'Template created successfully.');
+        return redirect()->route('templates.index')->with('success', 'Template berhasil dibuat.');
     }
 
     public function show(int $id)
     {
         $template = $this->templateService->getTemplateById($id);
+        $template->load([
+            'latestVersion.aspectVersions.aspect',
+            'latestVersion.visibilityRules'
+        ]);
 
         return Inertia::render('template/Show', [
-            'template' => new TemplateResource($template),
+            'template' => new TemplateResource($template)->resolve(),
         ]);
     }
 
     public function edit(int $id)
     {
         $template = $this->templateService->getTemplateById($id);
+        $template->load([
+            'latestVersion.aspectVersions.aspect',
+            'latestVersion.visibilityRules'
+        ]);
+        $aspects = $this->aspectService->getAllAspects();
 
         return Inertia::render('template/Edit', [
-            'template' => new TemplateResource($template),
+            'template' => new TemplateResource($template)->resolve(),
+            'aspects' => $aspects
         ]);
     }
 
     public function update(TemplateRequest $request, int $id)
     {
         $template = $this->templateService->getTemplateById($id);
-
         $this->templateService->updateTemplate($template, $request->validated());
 
-        return redirect()->route('templates.index')->with('success', 'Template updated successfully.');
+        return redirect()->route('templates.index')->with('success', 'Template berhasil diperbarui.');
     }
 
     public function destroy(int $id)
     {
         $template = $this->templateService->getTemplateById($id);
-
         $this->templateService->deleteTemplate($template);
 
-        return redirect()->route('templates.index')->with('success', 'Template deleted successfully.');
+        return redirect()->route('templates.index')->with('success', 'Template berhasil dihapus.');
     }
 }

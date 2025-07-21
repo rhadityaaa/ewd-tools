@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('visibilty_rules');
+        Schema::dropIfExists('visibility_rules');
     }
 };

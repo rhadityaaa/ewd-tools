@@ -5,10 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useFormStore } from '@/stores/formStore';
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 
 const toast = useToast();
+
 // Props from controller
 const props = defineProps({
     aspectGroups: {
@@ -26,9 +27,10 @@ const formStore = useFormStore();
 
 const showReport = ref(false);
 const isSubmitting = ref(false);
+const lastSaved = ref(null);
 
-// Use reactive data from props and sync with store
-const aspectGroups = reactive(
+// Use ref instead of reactive for aspectGroups
+const aspectGroups = ref(
     props.aspectGroups.map((group) => ({
         ...group,
         aspects: group.aspects.map((aspect) => {
@@ -39,13 +41,13 @@ const aspectGroups = reactive(
                 notes: existingAspect?.notes || '',
             };
         }),
-    })),
+    }))
 );
 
 // Initialize store with aspect data
 onMounted(() => {
     const aspectsData = [];
-    aspectGroups.forEach((group) => {
+    aspectGroups.value.forEach((group) => {
         group.aspects.forEach((aspect) => {
             aspectsData.push({
                 questionId: aspect.id,
@@ -72,8 +74,7 @@ onMounted(() => {
     formStore.updateAspectsBorrower(aspectsData);
 });
 
-// --- REFINED VISIBILITY LOGIC ---
-
+// Visibility logic for individual questions
 const isVisible = (entity) => {
     if (!entity.visibility_rules || entity.visibility_rules.length === 0) {
         return true;
@@ -85,89 +86,174 @@ const isVisible = (entity) => {
 
         if (rule.source_type === 'borrower_detail') {
             sourceValue = formStore.informationBorrower?.[sourceField];
-        }
-        // ▼▼▼ SIMPLIFIED LOGIC ▼▼▼
-        else if (rule.source_type === 'borrower_facility') {
-            // ALWAYS use the 'getTotalByKey' getter for any field from facilities.
-            sourceValue = formStore.getTotalByKey(sourceField);
+        } else if (rule.source_type === 'borrower_facility') {
+            // Use getTotalByKey if available, otherwise check individual facilities
+            if (formStore.getTotalByKey && typeof formStore.getTotalByKey === 'function') {
+                sourceValue = formStore.getTotalByKey(sourceField);
+            } else {
+                // Fallback: check if any facility matches
+                const facility = formStore.facilitiesBorrower?.find(f => f[sourceField] !== undefined);
+                sourceValue = facility ? facility[sourceField] : 0;
+            }
         } else if (rule.source_type === 'answer') {
-            const sourceAspect = aspectGroups.flatMap((g) => g.aspects).find((a) => a.id == sourceField);
+            const sourceAspect = aspectGroups.value.flatMap((g) => g.aspects).find((a) => a.id == sourceField);
             sourceValue = sourceAspect?.value;
         }
 
-        if (sourceValue === undefined) {
+        if (sourceValue === undefined || sourceValue === null) {
             console.warn(`Visibility check failed: Source value for '${sourceField}' is undefined.`, { rule });
             return false;
         }
 
-        const ruleValue = rule.value;
-        let result = false;
-
-        try {
-            switch (rule.operator) {
-                case '>':
-                case '<':
-                case '>=':
-                case '<=':
-                    result = eval(`${Number(sourceValue)} ${rule.operator} ${Number(ruleValue)}`);
-                    break;
-                case '=':
-                case '!=':
-                    // Compare as numbers for facilities, otherwise as strings
-                    result =
-                        rule.source_type === 'borrower_facility'
-                            ? Number(sourceValue) == Number(ruleValue)
-                            : String(sourceValue) == String(ruleValue);
-                    if (rule.operator === '!=') result = !result;
-                    break;
-                case 'in':
-                    const listIn = String(ruleValue)
-                        .split(',')
-                        .map((item) => item.trim());
-                    result = listIn.includes(String(sourceValue));
-                    break;
-                case 'not_in':
-                    const listNotIn = String(ruleValue)
-                        .split(',')
-                        .map((item) => item.trim());
-                    result = !listNotIn.includes(String(sourceValue));
-                    break;
-                case 'contains':
-                    result = String(sourceValue).includes(String(ruleValue));
-                    break;
-                case 'not contains':
-                    result = !String(sourceValue).includes(String(ruleValue));
-                    break;
-                default:
-                    result = true;
-            }
-        } catch (e) {
-            console.error(`Error evaluating rule:`, { rule, sourceValue, error: e });
-            return false;
-        }
-        return result;
+        return compareValues(sourceValue, rule.operator, rule.value);
     });
 };
 
+// Template visibility logic - PERBAIKAN
+const isTemplateVisible = (templateRules) => {
+    if (!templateRules || templateRules.length === 0) {
+        return true;
+    }
+
+    // Semua rules harus terpenuhi (AND logic)
+    const result = templateRules.every((rule) => {
+        let sourceValue;
+        const sourceField = rule.source_field;
+
+        if (rule.source_type === 'borrower_detail') {
+            sourceValue = formStore.informationBorrower?.[sourceField];
+        } else if (rule.source_type === 'borrower_facility') {
+            // PERBAIKAN: Gunakan getTotalByKey untuk menghitung total dari semua fasilitas
+            if (formStore.getTotalByKey && typeof formStore.getTotalByKey === 'function') {
+                sourceValue = formStore.getTotalByKey(sourceField);
+            } else {
+                // Fallback: hitung manual total dari semua fasilitas
+                sourceValue = formStore.facilitiesBorrower?.reduce((total, facility) => {
+                    const value = parseFloat(facility[sourceField]) || 0;
+                    return total + value;
+                }, 0) || 0;
+            }
+        } else if (rule.source_type === 'answer') {
+            const answeredAspect = formStore.aspectsBorrower?.find(aspect => 
+                aspect.questionId?.toString() === rule.source_field
+            );
+            sourceValue = answeredAspect ? answeredAspect.selectedOptionId : null;
+        }
+
+        // PERBAIKAN: Pastikan sourceValue tidak undefined/null untuk numeric comparison
+        if (sourceValue === undefined || sourceValue === null) {
+            // Untuk numeric fields, treat as 0
+            if (['>', '<', '>=', '<='].includes(rule.operator)) {
+                sourceValue = 0;
+            } else {
+                console.warn(`Template visibility: Source value for '${sourceField}' is undefined/null`, { rule });
+                return false;
+            }
+        }
+
+        const ruleResult = compareValues(sourceValue, rule.operator, rule.value);
+        
+        // Debug log untuk setiap rule
+        console.log('Template rule evaluation:', {
+            rule: {
+                source_type: rule.source_type,
+                source_field: rule.source_field,
+                operator: rule.operator,
+                value: rule.value
+            },
+            sourceValue,
+            result: ruleResult
+        });
+
+        return ruleResult;
+    });
+
+    console.log('Template visibility final result:', result);
+    return result;
+};
+
+const compareValues = (sourceValue, operator, targetValue) => {
+    try {
+        switch (operator) {
+            case '=':
+                return sourceValue == targetValue;
+            case '!=':
+                return sourceValue != targetValue;
+            case '>':
+                return parseFloat(sourceValue) > parseFloat(targetValue);
+            case '<':
+                return parseFloat(sourceValue) < parseFloat(targetValue);
+            case '>=':
+                return parseFloat(sourceValue) >= parseFloat(targetValue);
+            case '<=':
+                return parseFloat(sourceValue) <= parseFloat(targetValue);
+            case 'in':
+                const values = targetValue.split(',').map(v => v.trim());
+                return values.includes(sourceValue?.toString());
+            case 'not_in':
+                const notValues = targetValue.split(',').map(v => v.trim());
+                return !notValues.includes(sourceValue?.toString());
+            case 'contains':
+                return String(sourceValue).includes(String(targetValue));
+            case 'not_contains':
+                return !String(sourceValue).includes(String(targetValue));
+            default:
+                return false;
+        }
+    } catch (e) {
+        console.error(`Error comparing values:`, { sourceValue, operator, targetValue, error: e });
+        return false;
+    }
+};
+
+// Update visibleAspectGroups to properly handle visibility hierarchy
 const visibleAspectGroups = computed(() => {
-    // Explicitly watch the store's total getters for reactivity
-    const _totalLimit = formStore.totalLimit;
-    const _totalOutstanding = formStore.totalOutstanding;
-    const _infoData = formStore.informationBorrower;
+    if (!aspectGroups.value || aspectGroups.value.length === 0) {
+        return [];
+    }
 
-    console.log(aspectGroups);
+    // Debug log untuk troubleshooting
+    console.log('Processing aspect groups:', aspectGroups.value.length);
 
-    return aspectGroups
-        .filter((group) => isVisible(group))
-        .map((group) => ({
+    return aspectGroups.value
+        .filter(group => {
+            // PRIORITAS 1: Cek template-level visibility rules terlebih dahulu
+            if (group.template_visibility_rules && group.template_visibility_rules.length > 0) {
+                const templateVisible = isTemplateVisible(group.template_visibility_rules);
+                console.log(`Template visibility for group ${group.id}:`, {
+                    rules: group.template_visibility_rules,
+                    visible: templateVisible
+                });
+                
+                // Jika template tidak visible, langsung return false tanpa cek question visibility
+                if (!templateVisible) {
+                    return false;
+                }
+            }
+            
+            // PRIORITAS 2: Jika template visible (atau tidak ada template rules), 
+            // baru cek question-level visibility
+            const visibleAspects = group.aspects?.filter(aspect => {
+                const aspectVisible = isVisible(aspect);
+                console.log(`Question visibility for aspect ${aspect.id}:`, {
+                    rules: aspect.visibility_rules,
+                    visible: aspectVisible
+                });
+                return aspectVisible;
+            }) || [];
+            
+            // Group hanya ditampilkan jika ada minimal 1 question yang visible
+            return visibleAspects.length > 0;
+        })
+        .map(group => ({
             ...group,
-            aspects: group.aspects.filter((aspect) => isVisible(aspect)),
-        }))
-        .filter((group) => group.aspects.length > 0);
+            // Filter aspects berdasarkan question visibility (setelah template visibility passed)
+            aspects: group.aspects?.filter(aspect => isVisible(aspect)) || []
+        }));
 });
 
-// --- END OF VISIBILITY LOGIC ---
-
+// PERBAIKAN: Hapus implementasi isTemplateVisible yang lama dan bertentangan
+// Hapus kode yang di-comment dari baris ~223-267
 const getOptionsForQuestion = (aspect) => {
     if (aspect.options && aspect.options.length > 0) {
         return aspect.options;
@@ -179,15 +265,17 @@ const getOptionsForQuestion = (aspect) => {
 };
 
 watch(
-    () => aspectGroups,
+    () => aspectGroups.value,
     (newAspectGroups) => {
-        newAspectGroups.forEach((group) => {
-            group.aspects.forEach((aspect) => {
-                formStore.updateAspectAnswer(aspect.id, aspect.value, aspect.notes);
+        if (newAspectGroups) {
+            newAspectGroups.forEach((group) => {
+                group.aspects?.forEach((aspect) => {
+                    formStore.updateAspectAnswer(aspect.id, aspect.value, aspect.notes);
+                });
             });
-        });
+        }
     },
-    { deep: true },
+    { deep: true }
 );
 
 const form = useForm({
@@ -208,7 +296,7 @@ const getSelectedOptionScore = (aspect) => {
 
 const isFormValid = computed(() => {
     return visibleAspectGroups.value.every((group) =>
-        group.aspects.every((aspect) => !aspect.is_mandatory || (aspect.value !== null && aspect.value !== undefined)),
+        group.aspects.every((aspect) => !aspect.is_mandatory || (aspect.value !== null && aspect.value !== undefined))
     );
 });
 
@@ -217,7 +305,7 @@ const completionProgress = computed(() => {
     if (totalQuestions === 0) return 0;
     const answeredQuestions = visibleAspectGroups.value.reduce(
         (total, group) => total + group.aspects.filter((aspect) => aspect.value !== null && aspect.value !== undefined).length,
-        0,
+        0
     );
     return Math.round((answeredQuestions / totalQuestions) * 100);
 });
@@ -238,14 +326,14 @@ const submitForm = async () => {
                 notes: aspect.notes || null,
                 score: getSelectedOptionScore(aspect),
                 aspect_group_id: group.id,
-            })),
+            }))
     );
 
     form.aspects = aspectsData;
     form.report_meta = {
-        template_id: formStore.reportMeta.template_id,
-        period_id: formStore.reportMeta.period_id,
-        borrower_id: formStore.informationBorrower.borrowerId,
+        template_id: formStore.reportMeta?.template_id,
+        period_id: formStore.reportMeta?.period_id,
+        borrower_id: formStore.informationBorrower?.borrowerId,
     };
 
     const endpoint = props.reportId ? route('aspects.update', props.reportId) : route('aspects.store');
@@ -275,11 +363,10 @@ onMounted(() => {
     if (typeof window !== 'undefined') {
         checkScreenSize();
         window.addEventListener('resize', checkScreenSize);
-        // Backup logic...
     }
 });
 
-// Other methods...
+// Other methods
 const generateReport = () => (showReport.value = true);
 const closeReport = () => (showReport.value = false);
 </script>
@@ -303,7 +390,20 @@ const closeReport = () => (showReport.value = false);
         <Card>
             <CardContent>
                 <form @submit.prevent="submitForm">
-                    <!-- Gunakan `visibleAspectGroups` untuk me-render grup dan pertanyaan yang sudah difilter -->
+                    <!-- Debug info -->
+                    <div v-if="visibleAspectGroups.length === 0" class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                        <p class="text-yellow-800">Tidak ada aspek yang ditampilkan. Periksa data borrower dan facility untuk memastikan template visibility rules terpenuhi.</p>
+                        <details class="mt-2">
+                            <summary class="cursor-pointer text-sm text-yellow-600">Debug Info</summary>
+                            <pre class="mt-2 text-xs bg-white p-2 rounded">{{ JSON.stringify({ 
+                                aspectGroups: props.aspectGroups?.length || 0,
+                                borrowerData: formStore.informationBorrower,
+                                facilityData: formStore.facilitiesBorrower?.length || 0
+                            }, null, 2) }}</pre>
+                        </details>
+                    </div>
+
+                    <!-- Render aspect groups -->
                     <div v-for="group in visibleAspectGroups" :key="group.id" class="mb-8">
                         <!-- Judul Kelompok Aspek -->
                         <div class="mb-4 rounded bg-gray-200 p-2">
@@ -323,7 +423,6 @@ const closeReport = () => (showReport.value = false);
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- Loop ini sekarang hanya akan menampilkan pertanyaan yang visible -->
                                     <tr
                                         v-for="aspect in group.aspects"
                                         :key="aspect.id"
@@ -365,7 +464,6 @@ const closeReport = () => (showReport.value = false);
 
                         <!-- Tampilan Mobile -->
                         <div v-else class="space-y-6">
-                            <!-- Loop ini juga sudah otomatis terfilter -->
                             <div
                                 v-for="aspect in group.aspects"
                                 :key="aspect.id"
@@ -410,103 +508,9 @@ const closeReport = () => (showReport.value = false);
 
                     <!-- Auto Save Indicator -->
                     <div v-if="lastSaved" class="mb-4 text-xs text-gray-500">Terakhir disimpan otomatis: {{ lastSaved.toLocaleTimeString() }}</div>
-
-                    <!-- Tombol Submit -->
-                    <div class="mt-6 flex justify-end space-x-4">
-                        <Button type="button" @click="generateReport" variant="outline" class="w-full md:w-auto" :disabled="completionProgress === 0">
-                            Preview Report
-                        </Button>
-                        <Button
-                            type="submit"
-                            :disabled="isSubmitting || !isFormValid"
-                            class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 md:w-auto"
-                        >
-                            <span v-if="isSubmitting" class="flex items-center">
-                                <svg
-                                    class="mr-3 -ml-1 h-4 w-4 animate-spin text-white"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path
-                                        class="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                </svg>
-                                Menyimpan...
-                            </span>
-                            <span v-else>
-                                {{ props.reportId ? 'Update Data' : 'Simpan Data' }}
-                            </span>
-                        </Button>
-                    </div>
                 </form>
             </CardContent>
         </Card>
-    </div>
-
-    <!-- Modal Report -->
-    <div v-if="showReport" class="fixed inset-0 z-10 overflow-y-auto" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-        <div class="flex min-h-screen items-end justify-center px-4 pt-4 text-center sm:block sm:p-0">
-            <div @click="closeReport" class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
-            <div
-                class="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl sm:align-middle"
-            >
-                <div class="bg-white p-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
-                        <div class="mt-3 w-full text-center sm:mt-0 sm:text-left">
-                            <h3 class="text-lg leading-6 font-medium" id="modal-title">Hasil Penilaian Aspek</h3>
-                            <div class="mt-2">
-                                <p class="text-sm text-gray-500">
-                                    Ringkasan hasil penilaian dari semua pertanyaan yang terlihat ({{ completionProgress }}% selesai).
-                                </p>
-                            </div>
-                            <div class="mt-4 max-h-[60vh] overflow-y-auto pr-2">
-                                <!-- Gunakan `visibleAspectGroups` juga di modal report -->
-                                <div v-for="group in visibleAspectGroups" :key="group.id" class="mb-6 last:mb-0">
-                                    <h4 class="mb-3 text-lg font-semibold">{{ group.name }}</h4>
-                                    <div class="grid gap-4">
-                                        <div v-for="item in group.aspects" :key="`report-${item.id}`" class="rounded-lg border p-4">
-                                            <div class="mb-2 flex items-center justify-between">
-                                                <h5 class="font-medium">{{ item.id }}. {{ item.question }}</h5>
-                                                <span
-                                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                                                    :class="{
-                                                        'bg-green-100 text-green-800': item.value !== null && item.value !== undefined,
-                                                        'bg-gray-100 text-gray-800': item.value === null || item.value === undefined,
-                                                    }"
-                                                >
-                                                    {{
-                                                        item.value !== null && item.value !== undefined
-                                                            ? getOptionsForQuestion(item).find((opt) => opt.id === item.value)?.option_text ||
-                                                              'Tidak diketahui'
-                                                            : 'Belum dinilai'
-                                                    }}
-                                                </span>
-                                            </div>
-                                            <div v-if="item.notes" class="rounded-md bg-gray-100 p-3 text-sm">
-                                                <span class="font-medium">Keterangan:</span> {{ item.notes }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                    <button
-                        type="button"
-                        @click="closeReport"
-                        class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-                    >
-                        Tutup
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 </template>
 

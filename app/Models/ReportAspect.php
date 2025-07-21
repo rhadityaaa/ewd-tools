@@ -27,6 +27,16 @@ class ReportAspect extends Model
 
     public function aspectVersion()
     {
-        // return $this->belongsTo(AspectV::class);
+        return $this->belongsTo(AspectVersion::class);
+    }
+
+    public function questionVersion()
+    {
+        return $this->belongsTo(QuestionVersion::class, 'question_id');
+    }
+
+    public function selectedOption()
+    {
+        return $this->belongsTo(QuestionOption::class, 'selected_option_id');
     }
 }

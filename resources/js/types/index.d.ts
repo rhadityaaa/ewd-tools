@@ -71,7 +71,7 @@ export interface Borrower {
     division_id: number;
     division: Division;
     details: BorrowerDetail;
-    facilities: BorrowerFacility;
+    facilities: BorrowerFacility[];
 }
 
 export interface BorrowerDetail {
@@ -104,15 +104,246 @@ export interface BorrowerFacility {
     updated_at?: string;
 }
 
+// Template and related interfaces
 export interface Template {
     id: number;
     name: string;
+    latest_version?: TemplateVersion;
+    created_at?: string;
+    updated_at?: string;
 }
 
+export interface TemplateVersion {
+    id: number;
+    template_id: number;
+    version_number: number;
+    description?: string;
+    effective_from: string;
+    template?: Template;
+    aspect_versions?: AspectVersion[];
+    visibility_rules?: VisibilityRule[];
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Aspect and related interfaces
 export interface Aspect {
     id: number;
     code: string;
-    latest_aspect_version: any;
+    latest_aspect_version?: AspectVersion;
+    aspect_versions?: AspectVersion[];
+    created_at?: string;
+    updated_at?: string;
 }
 
+export interface AspectVersion {
+    id: number;
+    aspect_id: number;
+    version_number: number;
+    name: string;
+    description?: string;
+    effective_from: string;
+    aspect?: Aspect;
+    question_versions?: QuestionVersion[];
+    visibility_rules?: VisibilityRule[];
+    pivot?: {
+        weight: number;
+        created_at?: string;
+        updated_at?: string;
+    };
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Question and related interfaces
+export interface Question {
+    id: number;
+    aspect_id?: number;
+    question_versions?: QuestionVersion[];
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface QuestionVersion {
+    id: number;
+    question_id: number;
+    aspect_version_id: number;
+    version_number: number;
+    question_text: string;
+    weight: number;
+    max_score: number;
+    min_score: number;
+    is_mandatory: boolean;
+    effective_from: string;
+    question?: Question;
+    aspect_version?: AspectVersion;
+    question_options?: QuestionOption[];
+    visibility_rules?: VisibilityRule[];
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface QuestionOption {
+    id: number;
+    question_version_id: number;
+    option_text: string;
+    score: number;
+    effective_from: string;
+    question_version?: QuestionVersion;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Visibility Rule interface
+export interface VisibilityRule {
+    id: number;
+    entity_type: string;
+    entity_id: number;
+    description?: string;
+    source_type: 'borrower_detail' | 'borrower_facility' | 'answer';
+    source_field: string;
+    operator: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'in' | 'not_in' | 'contains' | 'not contains';
+    value: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Form-related interfaces
+export interface InformationBorrower {
+    borrowerId: number | null;
+    borrowerGroup: string;
+    purpose: 'both' | 'kie' | 'kmke';
+    economicSector: string;
+    businessField: string;
+    borrowerBusiness: string;
+    collectibility: number;
+    restructuring: boolean;
+}
+
+export interface FacilityData {
+    id: number | null;
+    name: string;
+    limit: number;
+    outstanding: number;
+    interestRate: number;
+    principalArrears: number;
+    interestArrears: number;
+    pdo: number;
+    maturityDate: Date | string;
+}
+
+export interface AspectAnswer {
+    questionId: number;
+    questionText: string;
+    aspectName: string;
+    aspectCode: string;
+    options: {
+        id: number;
+        option_text: string;
+        score: number;
+    }[];
+    selectedOptionId: number | null;
+    notes: string | null;
+    isMandatory: boolean;
+    maxScore: number;
+    minScore: number;
+    weight: number;
+    visibility_rules?: VisibilityRule[];
+}
+
+export interface ReportMeta {
+    template_id: number | null;
+    period_id: number | null;
+    created_by: number | null;
+}
+
+// Form submission interface
+export interface FormSubmissionData {
+    informationBorrower: InformationBorrower;
+    facilitiesBorrower: FacilityData[];
+    aspectsBorrower: AspectAnswer[];
+    reportMeta: ReportMeta;
+}
+
+// API Response interface
+export interface ApiResponse<T = any> {
+    data: T;
+    message?: string;
+    errors?: Record<string, string[]>;
+}
+
+// Aspect Group interface for form rendering
+export interface AspectGroup {
+    id: string;
+    name: string;
+    description?: string;
+    weight?: number;
+    aspects: {
+        id: string;
+        question: string;
+        value: any;
+        notes: string;
+        question_version_id: number;
+        is_mandatory: boolean;
+        weight: number;
+        max_score: number;
+        min_score: number;
+        options: QuestionOption[];
+        visibility_rules: VisibilityRule[];
+    }[];
+    template_visibility_rules?: VisibilityRule[];
+}
+
+// Report interfaces
+export interface Report {
+    id: number;
+    borrower_id: number;
+    template_id: number;
+    period_id: number;
+    status: 'draft' | 'submitted' | 'approved' | 'rejected';
+    borrower?: Borrower;
+    template?: Template;
+    period?: Period;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface ReportAspect {
+    id: number;
+    report_id: number;
+    aspect_version_id: number;
+    total_score: number;
+    classification: 'safe' | 'warning' | 'critical';
+    report?: Report;
+    aspect_version?: AspectVersion;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface Answer {
+    id: number;
+    report_id: number;
+    question_version_id: number;
+    question_option_id: number;
+    notes?: string;
+    report?: Report;
+    question_version?: QuestionVersion;
+    question_option?: QuestionOption;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface ReportSummary {
+    id: number;
+    report_id: number;
+    total_score: number;
+    max_possible_score: number;
+    percentage: number;
+    risk_level: 'low' | 'medium' | 'high';
+    report?: Report;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Legacy type alias
 export type BreadcrumbItemType = BreadcrumbItem;

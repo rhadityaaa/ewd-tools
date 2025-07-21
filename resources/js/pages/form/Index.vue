@@ -6,12 +6,18 @@ import AspectForm from '@/pages/form/AspectForm.vue';
 import FacilityForm from '@/pages/form/FacilityForm.vue';
 import InformationForm from '@/pages/form/InformationForm.vue';
 import { useFormStore } from '@/stores/formStore';
-import { Link, router, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { Calculator, IdCard, ListCheck } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 
 const toast = useToast();
+const page = usePage();
+
+// Akses activePeriod dari middleware
+const activePeriod = computed(() => page.props.activePeriod);
+
+console.log("activePeriod:", activePeriod.value);
 
 // Tambahkan props
 const props = defineProps({
@@ -27,9 +33,29 @@ const props = defineProps({
         type: Number,
         default: null,
     },
+    template_id: {
+        type: Number,
+        default: null,
+    },
 });
 
 const formState = useFormStore();
+
+// Set template_id dan period_id ke formStore saat komponen dimount
+onMounted(() => {
+    if (props.template_id) {
+        formState.updateReportMeta({
+            template_id: props.template_id
+        });
+    }
+    
+    // Set period_id dari activePeriod
+    if (activePeriod.value?.id) {
+        formState.updateReportMeta({
+            period_id: activePeriod.value.id
+        });
+    }
+});
 
 // Form untuk submit semua data
 const form = useForm({
@@ -47,6 +73,7 @@ const submitAllData = async () => {
         form.facilitiesBorrower = formState.facilitiesBorrower;
         form.aspectsBorrower = formState.aspectsBorrower;
         form.reportMeta = formState.reportMeta;
+        console.log("DATA FORM: ", form);
 
         // Validasi data
         if (!form.informationBorrower.borrowerId) {
@@ -68,8 +95,7 @@ const submitAllData = async () => {
         form.post(route('forms.submit'), {
             onSuccess: (page) => {
                 toast.success('Data berhasil disimpan');
-                console.log(page);
-                // Redirect ke summary dengan report ID
+                console.log(page.props);
                 const reportId = page.props.reportId || page.props.flash?.reportId;
                 if (reportId) {
                     router.visit(route('summary', { reportId }));
@@ -128,6 +154,48 @@ const steps = [
 const currentStep = computed(() => steps[formState.activeStep - 1]);
 const currentComponent = computed(() => currentStep.value.component);
 const currentProps = computed(() => currentStep.value.props || {});
+
+// Add method to save step data
+const saveStepData = async (stepType, data) => {
+    try {
+        const response = await axios.post(route('forms.save-step'), {
+            step_type: stepType,
+            data: data
+        });
+        
+        // Jika ada template_id yang dikembalikan, redirect ke form dengan template_id
+        if (response.data.template_id && response.data.redirect_url) {
+            window.location.href = response.data.redirect_url;
+        }
+        
+        return response.data;
+    } catch (error) {
+        console.error('Error saving step data:', error);
+        throw error;
+    }
+};
+
+// Modify step navigation to save data and reload form
+const nextStep = async () => {
+    if (formState.activeStep < steps.length) {
+        try {
+            // Save current step data
+            if (formState.activeStep === 1) {
+                await saveStepData('borrower', formState.informationBorrower);
+            } else if (formState.activeStep === 2) {
+                const result = await saveStepData('facility', formState.facilitiesBorrower);
+                // Jika ada template_id, halaman akan di-redirect otomatis
+                if (result.template_id) {
+                    return; // Stop execution karena akan redirect
+                }
+            }
+            
+            formState.activeStep++;
+        } catch (error) {
+            toast.error('Gagal menyimpan data step');
+        }
+    }
+};
 </script>
 
 <template>
