@@ -66,7 +66,7 @@ class PeriodService
         }
 
         unset($updateData['start_time']);
-    unset($updateData['end_time']);
+        unset($updateData['end_time']);
 
          if (!empty($updateData)) {
         $period->update($updateData);
@@ -165,5 +165,14 @@ class PeriodService
     public function combineDateTime(string $date, string $time): Carbon
     {
         return Carbon::parse("{$date} {$time}");
+    }
+
+    public function getActivePeriods()
+    {
+        return Period::where('status', Status::ACTIVE)
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->get(['id', 'name', 'start_date', 'end_date'])
+            ->toArray();
     }
 }

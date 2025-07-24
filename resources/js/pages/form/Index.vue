@@ -15,9 +15,7 @@ const toast = useToast();
 const page = usePage();
 
 // Akses activePeriod dari middleware
-const activePeriod = computed(() => page.props.activePeriod);
-
-console.log("activePeriod:", activePeriod.value);
+// const activePeriod = computed(() => page.props.activePeriod);
 
 // Tambahkan props
 const props = defineProps({
@@ -25,7 +23,7 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
-    aspectGroups: {
+    aspect_groups: {
         type: Array,
         default: () => [],
     },
@@ -37,7 +35,13 @@ const props = defineProps({
         type: Number,
         default: null,
     },
+    active_period: {
+        type: Array,
+        default: () => [],
+    }
 });
+
+console.log(props);
 
 const formState = useFormStore();
 
@@ -50,9 +54,9 @@ onMounted(() => {
     }
     
     // Set period_id dari activePeriod
-    if (activePeriod.value?.id) {
+    if (props.active_period.value?.id) {
         formState.updateReportMeta({
-            period_id: activePeriod.value.id
+            period_id: props.active_period.value.id
         });
     }
 });

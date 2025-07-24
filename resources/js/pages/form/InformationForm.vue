@@ -25,8 +25,6 @@ const props = defineProps({
     },
 });
 
-const borrowers = props.borrowers?.data || [];
-
 const selectedBorrower: any = ref(null);
 
 const initialInformationBorrower = {
@@ -56,7 +54,7 @@ watch(
     (newData, oldData) => {
         if (newData.borrower_id !== oldData?.borrower_id) {
             if (newData.borrower_id) {
-                const foundBorrower = borrowers?.find((borrower: any) => borrower.id === Number(newData.borrower_id));
+                const foundBorrower = props.borrowers?.find((borrower: any) => borrower.id === Number(newData.borrower_id));
                 if (foundBorrower) {
                     selectedBorrower.value = foundBorrower;
                     formStore.existingBorrowerId = newData.borrower_id;

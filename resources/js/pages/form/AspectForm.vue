@@ -12,17 +12,26 @@ const toast = useToast();
 
 // Props from controller
 const props = defineProps({
-    aspectGroups: {
-        type: Array,
-        default: () => [],
-    },
-    reportId: {
+    template_id: {
         type: Number,
         default: null,
     },
+    aspect_groups: {
+        type: Array,
+        default: () => [],
+    },
+    report_id: {
+        type: Number,
+        default: null,
+    },
+    active_period: {
+        type: Array,
+        default: () => [],
+    },
 });
 
-// Pinia store
+console.log('aspectform', props.active_period)
+
 const formStore = useFormStore();
 
 const showReport = ref(false);
@@ -31,7 +40,7 @@ const lastSaved = ref(null);
 
 // Use ref instead of reactive for aspectGroups
 const aspectGroups = ref(
-    props.aspectGroups.map((group) => ({
+    props.aspect_groups.map((group) => ({
         ...group,
         aspects: group.aspects.map((aspect) => {
             const existingAspect = formStore.aspectsBorrower.find((a) => a.questionId === aspect.id);
@@ -285,7 +294,7 @@ const form = useForm({
         period_id: null,
         borrower_id: null,
     },
-    report_id: props.reportId,
+    report_id: props.report_id,
 });
 
 const getSelectedOptionScore = (aspect) => {
@@ -336,13 +345,13 @@ const submitForm = async () => {
         borrower_id: formStore.informationBorrower?.borrowerId,
     };
 
-    const endpoint = props.reportId ? route('aspects.update', props.reportId) : route('aspects.store');
-    const method = props.reportId ? 'put' : 'post';
+    const endpoint = props.report_id ? route('aspects.update', props.report_id) : route('aspects.store');
+    const method = props.report_id ? 'put' : 'post';
 
     form[method](endpoint, {
         onSuccess: () => {
-            toast.success(props.reportId ? 'Data aspek berhasil diperbarui' : 'Data aspek berhasil disimpan');
-            if (!props.reportId) formStore.nextStep();
+            toast.success(props.report_id ? 'Data aspek berhasil diperbarui' : 'Data aspek berhasil disimpan');
+            if (!props.report_id) formStore.nextStep();
         },
         onError: (errors) => {
             console.error('Submission errors:', errors);
@@ -396,9 +405,25 @@ const closeReport = () => (showReport.value = false);
                         <details class="mt-2">
                             <summary class="cursor-pointer text-sm text-yellow-600">Debug Info</summary>
                             <pre class="mt-2 text-xs bg-white p-2 rounded">{{ JSON.stringify({ 
-                                aspectGroups: props.aspectGroups?.length || 0,
+                                aspectGroups: props.aspect_groups.map(
+                                    (group) => ({
+                                        id: group.id,
+                                        name: group.name,
+                                        description: group.description,
+                                        aspects: group.aspects.map(
+                                            (aspect) => ({
+                                                id: aspect.id,
+                                                question: aspect.question,
+                                                description: aspect.description,
+                                                is_mandatory: aspect.is_mandatory,
+                                            })
+                                        ),
+                                    })
+                                ),
                                 borrowerData: formStore.informationBorrower,
-                                facilityData: formStore.facilitiesBorrower?.length || 0
+                                facilityData: formStore.facilitiesBorrower,
+                                template_id: props.template_id,
+                                period_id: props.active_period
                             }, null, 2) }}</pre>
                         </details>
                     </div>
