@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Borrower extends Model
 {
@@ -14,8 +17,23 @@ class Borrower extends Model
         'division_id',
     ];
 
-    public function division()
+    public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class);
+    }
+
+    public function details(): HasOne
+    {
+        return $this->hasOne(BorrowerDetail::class);
+    }
+
+    public function facilities(): HasMany
+    {
+        return $this->hasMany(BorrowerFacility::class);
+    }
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
     }
 }

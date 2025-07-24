@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class AspectVersion extends Model
 {
@@ -21,12 +23,12 @@ class AspectVersion extends Model
         'effective_from' => 'datetime', 
     ];
 
-    public function aspect()
+    public function aspect(): BelongsTo
     {
         return $this->belongsTo(Aspect::class);
     }
 
-    public function templates()
+    public function templates(): BelongsToMany
     {
         return $this->belongsToMany(TemplateVersion::class, 'aspect_template_versions')
                     ->withPivot('weight')
@@ -36,10 +38,5 @@ class AspectVersion extends Model
     public function questionVersions()
     {
         return $this->hasMany(QuestionVersion::class);
-    }
-
-    public function visibilityRules()
-    {
-        return $this->morphMany(VisibilityRule::class, 'entity');
     }
 }

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class QuestionVersion extends Model
 {
@@ -26,25 +28,21 @@ class QuestionVersion extends Model
         'max_score' => 'decimal:2',
         'min_score' => 'decimal:2',
         'is_mandatory' => 'boolean',
+        'effective_from' => 'datetime'
     ];
 
-    public function question()
+    public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class);
     }
 
-    public function aspectVersion()
+    public function aspectVersion(): BelongsTo
     {
         return $this->belongsTo(AspectVersion::class);
     }
 
-    public function questionOptions()
+    public function questionOptions(): HasMany
     {
         return $this->hasMany(QuestionOption::class);
-    }
-
-    public function visibilityRules()
-    {
-        return $this->morphMany(VisibilityRule::class, 'entity');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReportSummary extends Model
 {
@@ -17,6 +18,7 @@ class ReportSummary extends Model
         'override_reason',
         'business_notes',
         'reviewer_notes',
+        'summary_generated_at'
     ];
 
     protected $casts = [
@@ -25,7 +27,7 @@ class ReportSummary extends Model
         'summary_generated_at' => 'datetime',
     ];
 
-    public function report()
+    public function report(): BelongsTo
     {
         return $this->belongsTo(Report::class);
     }

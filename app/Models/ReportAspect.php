@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReportAspect extends Model
 {
@@ -20,12 +21,12 @@ class ReportAspect extends Model
         'total_score' => 'decimal:2',
     ];
 
-    public function report()
+    public function report(): BelongsTo
     {
         return $this->belongsTo(Report::class);
     }
 
-    public function aspectVersion()
+    public function aspectVersion(): BelongsTo
     {
         return $this->belongsTo(AspectVersion::class);
     }

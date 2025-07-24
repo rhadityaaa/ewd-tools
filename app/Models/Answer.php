@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Answer extends Model
 {
@@ -16,17 +17,17 @@ class Answer extends Model
         'notes',
     ];
 
-    public function report()
+    public function report(): BelongsTo
     {
         return $this->belongsTo(Report::class);
     }
 
-    public function questionVersion()
+    public function questionVersion(): BelongsTo
     {
         return $this->belongsTo(QuestionVersion::class);
     }
 
-    public function questionOption()
+    public function questionOption(): BelongsTo
     {
         return $this->belongsTo(QuestionOption::class);
     }

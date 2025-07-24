@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class VisibilityRule extends Model
 {
@@ -19,7 +20,7 @@ class VisibilityRule extends Model
         'value'
     ];
 
-    public function entity()
+    public function entity(): MorphTo
     {
         return $this->morphTo();
     }
