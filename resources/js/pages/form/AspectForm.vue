@@ -270,56 +270,47 @@ const getOptionsForQuestion = (aspect) => {
 };
 
 // Tambahkan watcher untuk props.aspect_groups
-// Tambahkan setelah definisi aspectGroups dan sebelum onMounted()
+// Tambahkan setelah watcher props.aspect_groups yang sudah ada
 watch(
-    () => props.aspect_groups,
+    () => aspectGroups.value,
     (newAspectGroups) => {
-        if (newAspectGroups && newAspectGroups.length > 0) {
-            console.log('Props aspect_groups changed, updating aspectGroups:', newAspectGroups.length);
-            
-            // Update aspectGroups dengan data baru
-            aspectGroups.value = newAspectGroups.map((group) => ({
-                ...group,
-                aspects: (group.aspects || []).map((aspect) => {
-                    const existingAspect = formStore.aspectsBorrower.find((a) => a.questionId === aspect.id);
-                    return {
-                        ...aspect,
-                        value: existingAspect?.selectedOptionId || null,
-                        notes: existingAspect?.notes || '',
+        // Sinkronkan perubahan aspect.value ke formStore.aspectsBorrower
+        const updatedAspectsData = [];
+        
+        newAspectGroups.forEach((group) => {
+            if (group.aspects && group.aspects.length > 0) {
+                group.aspects.forEach((aspect) => {
+                    const existingAspectIndex = formStore.aspectsBorrower.findIndex(
+                        (a) => a.questionId === aspect.id
+                    );
+                    
+                    const aspectData = {
+                        questionId: aspect.id,
+                        questionText: aspect.question_text,
+                        aspectName: group.name,
+                        aspectCode: group.code || `ASP_${group.id}`,
+                        options: aspect.options && aspect.options.length > 0
+                            ? aspect.options
+                            : [
+                                { id: 1, option_text: 'Ya', score: 1 },
+                                { id: 0, option_text: 'Tidak', score: 0 },
+                            ],
+                        selectedOptionId: aspect.value, // Sinkronkan dengan aspect.value
+                        notes: aspect.notes,
+                        isMandatory: aspect.is_mandatory || false,
+                        maxScore: aspect.max_score || 1,
+                        minScore: aspect.min_score || 0,
+                        weight: aspect.weight || 1,
+                        visibility_rules: aspect.visibility_rules || [],
                     };
-                }),
-            }));
-            
-            // Update store dengan data aspect yang baru
-            const aspectsData = [];
-            aspectGroups.value.forEach((group) => {
-                if (group.aspects && group.aspects.length > 0) {
-                    group.aspects.forEach((aspect) => {
-                        aspectsData.push({
-                            questionId: aspect.id,
-                            questionText: aspect.question_text,
-                            aspectName: group.name,
-                            aspectCode: group.code || `ASP_${group.id}`,
-                            options:
-                                aspect.options && aspect.options.length > 0
-                                    ? aspect.options
-                                    : [
-                                          { id: 1, option_text: 'Ya', score: 1 },
-                                          { id: 0, option_text: 'Tidak', score: 0 },
-                                      ],
-                            selectedOptionId: aspect.value,
-                            notes: aspect.notes,
-                            isMandatory: aspect.is_mandatory || false,
-                            maxScore: aspect.max_score || 1,
-                            minScore: aspect.min_score || 0,
-                            weight: aspect.weight || 1,
-                            visibility_rules: aspect.visibility_rules || [],
-                        });
-                    });
-                }
-            });
-            formStore.updateAspectsBorrower(aspectsData);
-        }
+                    
+                    updatedAspectsData.push(aspectData);
+                });
+            }
+        });
+        
+        // Update store dengan data yang sudah disinkronkan
+        formStore.updateAspectsBorrower(updatedAspectsData);
     },
     { deep: true, immediate: false }
 );
@@ -403,6 +394,18 @@ const submitForm = async () => {
 const isMobile = ref(false);
 const checkScreenSize = () => {
     isMobile.value = window.innerWidth < 768;
+};
+
+const getAspectFromStore = (questionId) => {
+    return formStore.aspectsBorrower.find(a => a.questionId === questionId) || { selectedOptionId: null };
+};
+
+const updateAspectInStore = (questionId, selectedOptionId, notes = '') => {
+    const aspectIndex = formStore.aspectsBorrower.findIndex(a => a.questionId === questionId);
+    if (aspectIndex !== -1) {
+        formStore.aspectsBorrower[aspectIndex].selectedOptionId = selectedOptionId;
+        formStore.aspectsBorrower[aspectIndex].notes = notes;
+    }
 };
 
 onMounted(() => {
@@ -531,7 +534,7 @@ const closeReport = () => (showReport.value = false);
 
                                 <div class="mb-3">
                                     <label class="mb-2 block text-sm font-medium text-gray-700">Nilai</label>
-                                    <Select v-model="aspect.value">
+                                    <Select v-model="getAspectFromStore(aspect.id).selectedOptionId">
                                         <SelectTrigger class="w-full">
                                             <SelectValue placeholder="Pilih nilai" />
                                         </SelectTrigger>

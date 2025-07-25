@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { ref, computed } from 'vue';
 import { useToast } from 'vue-toastification';
+import { useForm } from '@inertiajs/vue3';
 
 const toast = useToast();
 
@@ -20,7 +23,7 @@ const props = defineProps({
     },
 });
 
-const formData = ref({
+const formData = useForm({
     borrowerName: props.reportData.borrower?.name || 'N/A',
     period: props.reportData.period?.name || 'N/A',
     businessNotes: props.reportData.summary?.business_notes || '',
@@ -73,6 +76,19 @@ const getCollectibilityText = (level: number) => {
         4: 'Loss'
     };
     return levels[level as keyof typeof levels] || 'Unknown';
+};
+
+// Fungsi untuk menyimpan business notes dan reviewer notes
+const saveSummaryNotes = () => {
+    formData.patch(route('summary.update', props.reportId), {
+        onSuccess: () => {
+            toast.success('Catatan berhasil disimpan');
+        },
+        onError: (errors) => {
+            console.error('Save errors:', errors);
+            toast.error('Gagal menyimpan catatan');
+        },
+    });
 };
 </script>
 
@@ -143,7 +159,7 @@ const getCollectibilityText = (level: number) => {
                 </div>
             </div>
 
-            <!-- Aspect Classification Table dengan Detail Skor -->
+            <!-- Aspect Classification Table - Simplified -->
             <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
                 <h2 class="mb-4 text-lg font-semibold text-gray-800">Klasifikasi Aspek dengan Detail Perhitungan</h2>
                 <div class="overflow-x-auto">
@@ -152,10 +168,6 @@ const getCollectibilityText = (level: number) => {
                             <tr class="bg-gray-100">
                                 <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">Aspect ID</th>
                                 <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">Aspect Name</th>
-                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Skor Total</th>
-                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Persentase</th>
-                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Bobot Template</th>
-                                <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Skor Berbobot</th>
                                 <th class="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-700">Classification</th>
                             </tr>
                         </thead>
@@ -163,18 +175,6 @@ const getCollectibilityText = (level: number) => {
                             <tr v-for="aspect in aspects" :key="aspect.id" class="bg-gray-50">
                                 <td class="border border-gray-300 px-4 py-3 text-center font-mono font-semibold text-gray-700">{{ aspect.id }}</td>
                                 <td class="border border-gray-300 px-4 py-3 text-gray-700">{{ aspect.name }}</td>
-                                <td class="border border-gray-300 px-4 py-3 text-center text-sm">
-                                    <div class="font-semibold">{{ aspect.totalScore }}/{{ aspect.maxScore }}</div>
-                                </td>
-                                <td class="border border-gray-300 px-4 py-3 text-center">
-                                    <div class="font-semibold text-blue-600">{{ aspect.percentage }}%</div>
-                                </td>
-                                <td class="border border-gray-300 px-4 py-3 text-center">
-                                    <div class="font-semibold text-purple-600">{{ aspect.weight }}%</div>
-                                </td>
-                                <td class="border border-gray-300 px-4 py-3 text-center">
-                                    <div class="font-semibold text-indigo-600">{{ aspect.weightedScore }}</div>
-                                </td>
                                 <td class="border border-gray-300 px-4 py-3 text-center">
                                     <span :class="[
                                         'inline-block rounded-full px-3 py-1 text-sm font-semibold',
@@ -191,10 +191,6 @@ const getCollectibilityText = (level: number) => {
                 <div class="mt-4 text-sm text-gray-600">
                     <p><strong>Keterangan:</strong></p>
                     <ul class="list-disc list-inside mt-2 space-y-1">
-                        <li><strong>Skor Total:</strong> Hasil penjumlahan (skor pertanyaan × bobot pertanyaan) untuk semua pertanyaan dalam aspek</li>
-                        <li><strong>Persentase:</strong> (Skor Total / Skor Maksimal) × 100%</li>
-                        <li><strong>Bobot Template:</strong> Bobot aspek sesuai template yang digunakan</li>
-                        <li><strong>Skor Berbobot:</strong> (Persentase / 100) × Bobot Template</li>
                         <li><strong>Klasifikasi:</strong> SAFE (≥80%), WARNING (60-79%), CRITICAL (<60%)</li>
                     </ul>
                 </div>
@@ -203,76 +199,31 @@ const getCollectibilityText = (level: number) => {
             <!-- Business Notes Section (Editable) -->
             <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
                 <h2 class="mb-4 text-lg font-semibold text-gray-800">Business Notes</h2>
-                <textarea
+                <Textarea
                     v-model="formData.businessNotes"
-                    class="w-full rounded-md border border-gray-300 p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                    rows="4"
-                    placeholder="Enter business-related notes and observations..."
-                ></textarea>
-            </div>
-
-            <!-- Override and Collectibility Section (Read-only) -->
-            <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                <!-- Override Section (Read-only) -->
-                <div class="rounded-lg bg-white p-6 shadow-sm">
-                    <h2 class="mb-4 text-lg font-semibold text-gray-800">Override Decision</h2>
-                    <div class="flex items-center space-x-3">
-                        <input
-                            id="override-checkbox"
-                            v-model="formData.override"
-                            type="checkbox"
-                            disabled
-                            class="h-4 w-4 cursor-not-allowed rounded border-gray-300 bg-gray-100 text-gray-400"
-                        />
-                        <label for="override-checkbox" class="text-sm font-medium text-gray-500"> Override automatic classification </label>
-                    </div>
-                    <p class="mt-2 text-xs text-gray-400">This setting is read-only in summary view.</p>
-                </div>
-
-                <!-- Collectibility Indicator (Read-only) -->
-                <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
-                    <h2 class="mb-4 text-lg font-semibold text-gray-800">Collectibility Indicator</h2>
-                    <div class="flex items-center space-x-3">
-                        <Label class="text-sm font-medium text-gray-700">Level:</Label>
-                        <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">
-                            {{ overallSummary.collectibility }} - {{ getCollectibilityText(overallSummary.collectibility) }}
-                        </div>
-                    </div>
-                    <p class="mt-2 text-xs text-gray-400">Indikator ini dihitung otomatis berdasarkan persentase skor keseluruhan.</p>
-                </div>
+                    placeholder="Masukkan catatan bisnis..."
+                    class="min-h-[100px] w-full"
+                />
             </div>
 
             <!-- Reviewer Notes Section (Editable) -->
             <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
                 <h2 class="mb-4 text-lg font-semibold text-gray-800">Reviewer Notes</h2>
-                <textarea
+                <Textarea
                     v-model="formData.reviewerNotes"
-                    class="w-full rounded-md border border-gray-300 p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                    rows="4"
-                    placeholder="Enter reviewer comments and recommendations..."
-                ></textarea>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex justify-end space-x-4">
-                <button
-                    type="button"
-                    class="rounded-md border border-gray-300 bg-white px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                >
-                    Back
-                </button>
-                <button
-                    type="button"
-                    class="rounded-md bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-                >
-                    Save Notes
-                </button>
-                <button
-                    type="button"
-                    class="rounded-md bg-green-600 px-6 py-2 text-sm font-medium text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
-                >
-                    Export PDF
-                </button>
+                    placeholder="Masukkan catatan reviewer..."
+                    class="min-h-[100px] w-full"
+                />
+                
+                <div class="mt-4 flex justify-end">
+                    <Button 
+                        @click="saveSummaryNotes"
+                        :disabled="formData.processing"
+                        class="px-6 py-2"
+                    >
+                        {{ formData.processing ? 'Menyimpan...' : 'Simpan Catatan' }}
+                    </Button>
+                </div>
             </div>
         </div>
     </div>

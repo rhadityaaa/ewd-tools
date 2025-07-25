@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('purpose');
             $table->string('economic_sector');
             $table->string('business_field');
+            $table->string('borrower_business');
             $table->integer('collectibility');
             $table->boolean('restructuring');
             $table->timestamps();

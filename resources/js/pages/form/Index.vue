@@ -385,17 +385,35 @@ const submitAllData = async () => {
             return;
         }
 
+        // Validasi aspek - pastikan semua pertanyaan terjawab
+        const unansweredAspects = form.aspectsBorrower.filter(aspect => 
+            !aspect.selectedOptionId || aspect.selectedOptionId === null
+        );
+        
+        if (unansweredAspects.length > 0) {
+            const aspectNames = unansweredAspects.map(aspect => aspect.aspectName).join(', ');
+            toast.error(`Silakan jawab semua pertanyaan aspek: ${aspectNames}`);
+            return;
+        }
+
+        // Validasi reportMeta
+        if (!form.reportMeta.template_id) {
+            toast.error('Template ID tidak ditemukan');
+            return;
+        }
+
+        if (!form.reportMeta.period_id) {
+            toast.error('Period ID tidak ditemukan');
+            return;
+        }
+
         // Submit ke backend
         form.post(route('forms.submit'), {
             onSuccess: (page) => {
                 toast.success('Data berhasil disimpan');
                 console.log(page.props);
                 const reportId = page.props.reportId || page.props.flash?.reportId;
-                if (reportId) {
-                    router.visit(route('summary', { reportId }));
-                } else {
-                    router.visit(route('dashboard'));
-                }
+                router.visit(route('summary', { reportId }));
             },
             onError: (errors) => {
                 console.error('Submit errors:', errors);

@@ -167,12 +167,12 @@ class PeriodService
         return Carbon::parse("{$date} {$time}");
     }
 
-    public function getActivePeriods()
+    public function getActivePeriod()
     {
         return Period::where('status', Status::ACTIVE)
             ->where('start_date', '<=', now())
             ->where('end_date', '>=', now())
-            ->get(['id', 'name', 'start_date', 'end_date'])
-            ->toArray();
+            ->select(['id', 'name', 'start_date', 'end_date'])
+            ->first();
     }
 }

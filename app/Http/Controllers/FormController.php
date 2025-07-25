@@ -12,21 +12,30 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\Report;
+use App\Models\Answer;
+use App\Models\BorrowerDetail;
+use App\Models\BorrowerFacility;
+use App\Services\SummaryCalculationService;
+use Illuminate\Support\Facades\DB;
 
 class FormController extends Controller
 {
     protected $formService;
     protected $borrowerService;
     protected $periodService;
+    protected $summaryService;
 
     public function __construct(
         FormService $formService,
         BorrowerService $borrowerService,
-        PeriodService $periodService
+        PeriodService $periodService,
+        SummaryCalculationService $summaryService
     ) {
         $this->formService = $formService;
         $this->borrowerService = $borrowerService;
         $this->periodService = $periodService;
+        $this->summaryService = $summaryService;
     }
 
     public function index(Request $request)
@@ -38,7 +47,8 @@ class FormController extends Controller
 
         $borrowers = $this->borrowerService->getAllBorrowers();
 
-        $activePeriod = $this->periodService->getActivePeriods();
+        // Ubah untuk mendapatkan periode aktif tunggal
+        $activePeriod = $this->periodService->getActivePeriod();
 
         $formData = $this->formService->getFormData($templateId, $borrowerData, $facilityData);
 
@@ -50,6 +60,132 @@ class FormController extends Controller
             'aspect_groups' => $formData['aspectGroups'],
             'active_period' => $activePeriod
         ]);
+    }
+
+    public function submitAll(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            
+            // Validasi yang lebih lengkap
+            $validated = $request->validate([
+                'informationBorrower.borrowerId' => 'required|exists:borrowers,id',
+                'informationBorrower.borrowerGroup' => 'required|string',
+                'informationBorrower.purpose' => 'required|in:both,kie,kmke',
+                'informationBorrower.economicSector' => 'required|string',
+                'informationBorrower.businessField' => 'required|string',
+                'informationBorrower.borrowerBusiness' => 'required|string',
+                'informationBorrower.collectibility' => 'required|integer|min:1|max:5',
+                'informationBorrower.restructuring' => 'required|boolean',
+                
+                'facilitiesBorrower' => 'required|array|min:1',
+                'facilitiesBorrower.*.name' => 'required|string',
+                'facilitiesBorrower.*.limit' => 'required|numeric|min:0',
+                'facilitiesBorrower.*.outstanding' => 'required|numeric|min:0',
+                'facilitiesBorrower.*.interestRate' => 'required|numeric|min:0',
+                'facilitiesBorrower.*.principalArrears' => 'required|numeric|min:0',
+                'facilitiesBorrower.*.interestArrears' => 'required|numeric|min:0',
+                'facilitiesBorrower.*.pdo' => 'required|integer|min:0',
+                'facilitiesBorrower.*.maturityDate' => 'required|date',
+                
+                'aspectsBorrower' => 'required|array|min:1',
+                'aspectsBorrower.*.questionId' => 'required|exists:question_versions,id',
+                'aspectsBorrower.*.selectedOptionId' => 'required|exists:question_options,id',
+                
+                'reportMeta.template_id' => 'required|exists:templates,id',
+                'reportMeta.period_id' => 'required|exists:periods,id'
+            ]);
+            
+            $borrowerId = $validated['informationBorrower']['borrowerId'];
+            
+            // 1. Simpan/Update BorrowerDetail
+            BorrowerDetail::updateOrCreate(
+                ['borrower_id' => $borrowerId],
+                [
+                    'borrower_group' => $validated['informationBorrower']['borrowerGroup'],
+                    'purpose' => $validated['informationBorrower']['purpose'],
+                    'economic_sector' => $validated['informationBorrower']['economicSector'],
+                    'business_field' => $validated['informationBorrower']['businessField'],
+                    'borrower_business' => $validated['informationBorrower']['borrowerBusiness'],
+                    'collectibility' => $validated['informationBorrower']['collectibility'],
+                    'restructuring' => $validated['informationBorrower']['restructuring'],
+                ]
+            );
+            
+            
+            foreach ($validated['facilitiesBorrower'] as $facility) {
+                BorrowerFacility::create([
+                    'borrower_id' => $borrowerId,
+                    'facility_name' => $facility['name'],
+                    'limit' => $facility['limit'],
+                    'outstanding' => $facility['outstanding'],
+                    'interest_rate' => $facility['interestRate'],
+                    'principal_arrears' => $facility['principalArrears'],
+                    'interest_arrears' => $facility['interestArrears'],
+                    'pdo_days' => $facility['pdo'],
+                    'maturity_date' => $facility['maturityDate'],
+                ]);
+            }
+            
+            // 3. Buat report baru
+            $report = Report::create([
+                'borrower_id' => $borrowerId,
+                'template_id' => $validated['reportMeta']['template_id'],
+                'period_id' => $validated['reportMeta']['period_id'],
+                'created_by' => auth()->id()
+            ]);
+            
+            // 4. Simpan jawaban-jawaban aspek
+            $answersCreated = 0;
+            foreach ($validated['aspectsBorrower'] as $aspectAnswer) {
+                if ($aspectAnswer['selectedOptionId']) {
+                    Answer::create([
+                        'report_id' => $report->id,
+                        'question_version_id' => $aspectAnswer['questionId'],
+                        'question_option_id' => $aspectAnswer['selectedOptionId'], // Perbaikan: gunakan question_option_id
+                        'notes' => $aspectAnswer['notes'] ?? ''
+                    ]);
+                    $answersCreated++;
+                }
+            }
+
+            
+            Log::info('Form submission successful', [
+                'report_id' => $report->id,
+                'borrower_id' => $borrowerId,
+                'answers_created' => $answersCreated,
+                'facilities_created' => count($validated['facilitiesBorrower'])
+            ]);
+            
+            $this->summaryService->calculateAndStoreSummary($report->id);
+            
+            DB::commit();
+            
+            // Clear session data
+            Session::forget(['borrower_data', 'facility_data', 'current_step', 'borrower_id']);
+            
+            // Return Inertia response
+            return Inertia::location(route('summary', ['reportId' => $report->id]));
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            Log::error('Form validation failed', [
+                'errors' => $e->errors(),
+                'input' => $request->all()
+            ]);
+            
+            return back()->withErrors($e->errors())->with('error', 'Data tidak valid: ' . implode(', ', array_flatten($e->errors())));
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Form submission failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'input' => $request->all()
+            ]);
+            
+            return back()->with('error', 'Gagal menyimpan data: ' . $e->getMessage());
+        }
     }
 
     public function saveStepData(Request $request): JsonResponse

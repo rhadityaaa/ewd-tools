@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('report_id')->constrained('reports')->cascadeOnDelete();
             $table->enum('final_classification', ['safe', 'warning']);
             $table->integer('indicative_collectibility');
-            $table->boolean('override');
+            $table->boolean('override')->default(false);
             $table->text('override_reason');
             $table->text('business_notes');
             $table->text('reviewer_notes');

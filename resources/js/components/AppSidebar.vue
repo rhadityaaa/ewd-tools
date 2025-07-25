@@ -44,6 +44,11 @@ const mainNavItems: NavItem[] = [
         href: route('aspects.index'),
         icon: ClipboardList,
     },
+    {
+        title: 'Laporan',
+        href: route('reports.index'),
+        icon: ClipboardList,
+    },
 ];
 
 const footerNavItems: NavItem[] = [
