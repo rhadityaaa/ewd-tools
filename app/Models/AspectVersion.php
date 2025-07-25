@@ -39,4 +39,9 @@ class AspectVersion extends Model
     {
         return $this->hasMany(QuestionVersion::class);
     }
+
+    public function visibilityRules()
+    {
+        return $this->morphMany(VisibilityRule::class, 'entity');
+    }
 }

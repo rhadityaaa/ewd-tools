@@ -125,5 +125,58 @@ export const useFormStore = defineStore('form', {
         updateReportMeta(payload: Partial<ReportMetaData>) {
             this.reportMeta = { ...this.reportMeta, ...payload };
         },
+        // Fungsi untuk menghitung total berdasarkan field tertentu untuk visibility rules
+        getTotalByKey(field: string): number {
+            if (!this.facilitiesBorrower || this.facilitiesBorrower.length === 0) {
+                return 0;
+            }
+
+            // Handle prefixed fields untuk operasi khusus
+            if (field.startsWith('total_') || field.startsWith('sum_')) {
+                const actualField = field.startsWith('total_') ? field.substring(6) : field.substring(4);
+                return this.facilitiesBorrower.reduce((total, facility) => {
+                    const value = parseFloat(facility[actualField as keyof FacilityState] as string) || 0;
+                    return total + value;
+                }, 0);
+            }
+
+            if (field.startsWith('avg_')) {
+                const actualField = field.substring(4);
+                if (this.facilitiesBorrower.length === 0) return 0;
+                const total = this.facilitiesBorrower.reduce((sum, facility) => {
+                    const value = parseFloat(facility[actualField as keyof FacilityState] as string) || 0;
+                    return sum + value;
+                }, 0);
+                return total / this.facilitiesBorrower.length;
+            }
+
+            if (field.startsWith('max_')) {
+                const actualField = field.substring(4);
+                return Math.max(...this.facilitiesBorrower.map(facility => {
+                    return parseFloat(facility[actualField as keyof FacilityState] as string) || 0;
+                }));
+            }
+
+            if (field.startsWith('min_')) {
+                const actualField = field.substring(4);
+                return Math.min(...this.facilitiesBorrower.map(facility => {
+                    return parseFloat(facility[actualField as keyof FacilityState] as string) || 0;
+                }));
+            }
+
+            if (field.startsWith('count_')) {
+                const actualField = field.substring(6);
+                return this.facilitiesBorrower.filter(facility => {
+                    const value = facility[actualField as keyof FacilityState];
+                    return value !== null && value !== undefined && value !== 0 && value !== '';
+                }).length;
+            }
+
+            // Default: hitung total untuk field yang diminta
+            return this.facilitiesBorrower.reduce((total, facility) => {
+                const value = parseFloat(facility[field as keyof FacilityState] as string) || 0;
+                return total + value;
+            }, 0);
+        },
     }
 });

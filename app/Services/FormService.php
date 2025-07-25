@@ -8,24 +8,45 @@ use App\Models\QuestionVersion;
 use App\Models\Template;
 use App\Models\TemplateVersion;
 use App\Models\VisibilityRule;
+use Illuminate\Support\Facades\Log;
 
 class FormService
 {
     public function getFormData(?int $templateId = null, array $borrowerData = [], array $facilityData = [])
     {
-        if (!$templateId && !empty($borrowerData) && !empty($facilityData)) {
-            $templateId = $this->getApplicableTemplate($borrowerData, $facilityData);
+        Log::info('FormService getFormData called', [
+            'templateId' => $templateId,
+            'borrowerData' => $borrowerData,
+            'facilityData' => $facilityData
+        ]);
+        
+        // Selalu evaluasi ulang template berdasarkan data terbaru
+        // Jangan gunakan templateId yang diberikan jika ada data borrower dan facility
+        $evaluatedTemplateId = null;
+        if (!empty($borrowerData) && !empty($facilityData)) {
+            $evaluatedTemplateId = $this->getApplicableTemplate($borrowerData, $facilityData);
+            Log::info('Re-evaluated template', [
+                'original_templateId' => $templateId,
+                'evaluated_templateId' => $evaluatedTemplateId
+            ]);
         }
         
+        // Gunakan template yang dievaluasi, fallback ke templateId jika tidak ada
+        $finalTemplateId = $evaluatedTemplateId ?? $templateId;
+        
         $data = [
-            'template_id' => $templateId,
+            'template_id' => $finalTemplateId,
             'borrower_data' => $borrowerData,
             'facility_data' => $facilityData,
             'aspectGroups' => [],
         ];
-
-        if ($templateId) {
-            $data['aspectGroups'] = $this->getAspectGroupsForForm($templateId, $borrowerData, $facilityData);
+    
+        if ($finalTemplateId) {
+            $data['aspectGroups'] = $this->getAspectGroupsForForm($finalTemplateId, $borrowerData, $facilityData);
+            Log::info('Aspect groups retrieved', [
+                'template_id' => $finalTemplateId,
+                'count' => count($data['aspectGroups'])
+            ]);
         }
 
         return $data;
@@ -33,20 +54,33 @@ class FormService
 
     public function getApplicableTemplate(array $borrowerData, array $facilityData): ?int
     {
+        Log::info('Getting applicable template', [
+            'borrowerData' => $borrowerData,
+            'facilityData' => $facilityData
+        ]);
+        
         $templates = Template::with(['latestVersion.visibilityRules'])->get();
-
+        Log::info('Found templates', ['count' => $templates->count()]);
+    
         foreach ($templates as $template) {
             $templateVersion = $template->latestVersion;
-
+    
             if (!$templateVersion) {
                 continue;
             }
-
+    
+            Log::info('Checking template', [
+                'template_id' => $template->id,
+                'template_name' => $template->name
+            ]);
+    
             if ($this->checkVisibility($templateVersion, $borrowerData, $facilityData)) {
+                Log::info('Template matched!', ['template_id' => $template->id]);
                 return $template->id;
             }
         }
-
+    
+        Log::warning('No template matched');
         return null;
     }
 
@@ -82,7 +116,7 @@ class FormService
                 'name' => $aspectVersion->name,
                 'description' => $aspectVersion->description,
                 'weight' => $aspectVersion->pivot->weight ?? 0,
-                'questions' => $questions,
+                'aspects' => $questions,  // Ubah dari 'questions' ke 'aspects'
             ];
         }
         
@@ -101,14 +135,15 @@ class FormService
             $questions[] = [
                 'id' => $questionVersion->id,
                 'question_id' => $questionVersion->question_id,
-                'text' => $questionVersion->text,
-                'type' => $questionVersion->type,
+                'question' => $questionVersion->question_text,  // Ubah dari 'text' ke 'question_text' sesuai model
                 'weight' => $questionVersion->weight,
+                'max_score' => $questionVersion->max_score,
+                'min_score' => $questionVersion->min_score,
+                'is_mandatory' => $questionVersion->is_mandatory,
                 'options' => $questionVersion->questionOptions->map(function ($option) {
                     return [
                         'id' => $option->id,
-                        'text' => $option->text,
-                        'value' => $option->value,
+                        'option_text' => $option->option_text,  // Sesuai dengan field di model
                         'score' => $option->score
                     ];
                 })->toArray(),
@@ -134,6 +169,7 @@ class FormService
     {
         $visibilityRules = $entity->visibilityRules ?? collect();
 
+
         if ($visibilityRules->isEmpty()) {
             return true;
         }
@@ -145,6 +181,8 @@ class FormService
     {
         foreach ($visibilityRules as $rule) {
             $sourceValue = null;
+
+            // dd($sourceValue); <- HAPUS BARIS INI
             switch ($rule->source_type) {
                 case 'borrower_detail':
                     $sourceValue = data_get($borrowerData, $rule->source_field);

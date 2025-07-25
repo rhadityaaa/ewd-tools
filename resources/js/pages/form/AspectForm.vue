@@ -10,39 +10,31 @@ import { useToast } from 'vue-toastification';
 
 const toast = useToast();
 
-// Props from controller
 const props = defineProps({
-    template_id: {
-        type: Number,
-        default: null,
-    },
     aspect_groups: {
         type: Array,
         default: () => [],
     },
-    report_id: {
+    reportId: {
         type: Number,
         default: null,
     },
-    active_period: {
-        type: Array,
-        default: () => [],
-    },
 });
 
-console.log('aspectform', props.active_period)
+console.log('Halo',props.aspect_groups);
 
+// Pinia store
 const formStore = useFormStore();
 
 const showReport = ref(false);
 const isSubmitting = ref(false);
 const lastSaved = ref(null);
 
-// Use ref instead of reactive for aspectGroups
+// Use ref instead of reactive for aspectGroups - PERBAIKAN: sesuaikan dengan struktur data baru
 const aspectGroups = ref(
-    props.aspect_groups.map((group) => ({
+    (props.aspect_groups || []).map((group) => ({
         ...group,
-        aspects: group.aspects.map((aspect) => {
+        aspects: (group.aspects || []).map((aspect) => {
             const existingAspect = formStore.aspectsBorrower.find((a) => a.questionId === aspect.id);
             return {
                 ...aspect,
@@ -53,33 +45,37 @@ const aspectGroups = ref(
     }))
 );
 
-// Initialize store with aspect data
+// Initialize store with aspect data - PERBAIKAN: sesuaikan field names
 onMounted(() => {
     const aspectsData = [];
-    aspectGroups.value.forEach((group) => {
-        group.aspects.forEach((aspect) => {
-            aspectsData.push({
-                questionId: aspect.id,
-                questionText: aspect.question,
-                aspectName: group.name,
-                aspectCode: group.code || `ASP_${group.id}`,
-                options:
-                    aspect.options && aspect.options.length > 0
-                        ? aspect.options
-                        : [
-                              { id: 1, option_text: 'Ya', score: 1 },
-                              { id: 0, option_text: 'Tidak', score: 0 },
-                          ],
-                selectedOptionId: aspect.value,
-                notes: aspect.notes,
-                isMandatory: aspect.is_mandatory || false,
-                maxScore: aspect.max_score || 1,
-                minScore: aspect.min_score || 0,
-                weight: aspect.weight || 1,
-                visibility_rules: aspect.visibility_rules || [],
-            });
+    if (aspectGroups.value && aspectGroups.value.length > 0) {
+        aspectGroups.value.forEach((group) => {
+            if (group.aspects && group.aspects.length > 0) {
+                group.aspects.forEach((aspect) => {
+                    aspectsData.push({
+                        questionId: aspect.id,
+                        questionText: aspect.question_text, // Sesuai dengan field di model
+                        aspectName: group.name,
+                        aspectCode: group.code || `ASP_${group.id}`,
+                        options:
+                            aspect.options && aspect.options.length > 0
+                                ? aspect.options
+                                : [
+                                      { id: 1, option_text: 'Ya', score: 1 },
+                                      { id: 0, option_text: 'Tidak', score: 0 },
+                                  ],
+                        selectedOptionId: aspect.value,
+                        notes: aspect.notes,
+                        isMandatory: aspect.is_mandatory || false,
+                        maxScore: aspect.max_score || 1,
+                        minScore: aspect.min_score || 0,
+                        weight: aspect.weight || 1,
+                        visibility_rules: aspect.visibility_rules || [],
+                    });
+                });
+            }
         });
-    });
+    }
     formStore.updateAspectsBorrower(aspectsData);
 });
 
@@ -273,18 +269,59 @@ const getOptionsForQuestion = (aspect) => {
     ];
 };
 
+// Tambahkan watcher untuk props.aspect_groups
+// Tambahkan setelah definisi aspectGroups dan sebelum onMounted()
 watch(
-    () => aspectGroups.value,
+    () => props.aspect_groups,
     (newAspectGroups) => {
-        if (newAspectGroups) {
-            newAspectGroups.forEach((group) => {
-                group.aspects?.forEach((aspect) => {
-                    formStore.updateAspectAnswer(aspect.id, aspect.value, aspect.notes);
-                });
+        if (newAspectGroups && newAspectGroups.length > 0) {
+            console.log('Props aspect_groups changed, updating aspectGroups:', newAspectGroups.length);
+            
+            // Update aspectGroups dengan data baru
+            aspectGroups.value = newAspectGroups.map((group) => ({
+                ...group,
+                aspects: (group.aspects || []).map((aspect) => {
+                    const existingAspect = formStore.aspectsBorrower.find((a) => a.questionId === aspect.id);
+                    return {
+                        ...aspect,
+                        value: existingAspect?.selectedOptionId || null,
+                        notes: existingAspect?.notes || '',
+                    };
+                }),
+            }));
+            
+            // Update store dengan data aspect yang baru
+            const aspectsData = [];
+            aspectGroups.value.forEach((group) => {
+                if (group.aspects && group.aspects.length > 0) {
+                    group.aspects.forEach((aspect) => {
+                        aspectsData.push({
+                            questionId: aspect.id,
+                            questionText: aspect.question_text,
+                            aspectName: group.name,
+                            aspectCode: group.code || `ASP_${group.id}`,
+                            options:
+                                aspect.options && aspect.options.length > 0
+                                    ? aspect.options
+                                    : [
+                                          { id: 1, option_text: 'Ya', score: 1 },
+                                          { id: 0, option_text: 'Tidak', score: 0 },
+                                      ],
+                            selectedOptionId: aspect.value,
+                            notes: aspect.notes,
+                            isMandatory: aspect.is_mandatory || false,
+                            maxScore: aspect.max_score || 1,
+                            minScore: aspect.min_score || 0,
+                            weight: aspect.weight || 1,
+                            visibility_rules: aspect.visibility_rules || [],
+                        });
+                    });
+                }
             });
+            formStore.updateAspectsBorrower(aspectsData);
         }
     },
-    { deep: true }
+    { deep: true, immediate: false }
 );
 
 const form = useForm({
@@ -294,7 +331,7 @@ const form = useForm({
         period_id: null,
         borrower_id: null,
     },
-    report_id: props.report_id,
+    report_id: props.reportId,
 });
 
 const getSelectedOptionScore = (aspect) => {
@@ -345,13 +382,13 @@ const submitForm = async () => {
         borrower_id: formStore.informationBorrower?.borrowerId,
     };
 
-    const endpoint = props.report_id ? route('aspects.update', props.report_id) : route('aspects.store');
-    const method = props.report_id ? 'put' : 'post';
+    const endpoint = props.reportId ? route('aspects.update', props.reportId) : route('aspects.store');
+    const method = props.reportId ? 'put' : 'post';
 
     form[method](endpoint, {
         onSuccess: () => {
-            toast.success(props.report_id ? 'Data aspek berhasil diperbarui' : 'Data aspek berhasil disimpan');
-            if (!props.report_id) formStore.nextStep();
+            toast.success(props.reportId ? 'Data aspek berhasil diperbarui' : 'Data aspek berhasil disimpan');
+            if (!props.reportId) formStore.nextStep();
         },
         onError: (errors) => {
             console.error('Submission errors:', errors);
@@ -405,25 +442,9 @@ const closeReport = () => (showReport.value = false);
                         <details class="mt-2">
                             <summary class="cursor-pointer text-sm text-yellow-600">Debug Info</summary>
                             <pre class="mt-2 text-xs bg-white p-2 rounded">{{ JSON.stringify({ 
-                                aspectGroups: props.aspect_groups.map(
-                                    (group) => ({
-                                        id: group.id,
-                                        name: group.name,
-                                        description: group.description,
-                                        aspects: group.aspects.map(
-                                            (aspect) => ({
-                                                id: aspect.id,
-                                                question: aspect.question,
-                                                description: aspect.description,
-                                                is_mandatory: aspect.is_mandatory,
-                                            })
-                                        ),
-                                    })
-                                ),
+                                aspectGroups: props.aspect_groups?.length || 0,
                                 borrowerData: formStore.informationBorrower,
                                 facilityData: formStore.facilitiesBorrower,
-                                template_id: props.template_id,
-                                period_id: props.active_period
                             }, null, 2) }}</pre>
                         </details>
                     </div>
@@ -498,19 +519,18 @@ const closeReport = () => (showReport.value = false);
                                     'border-green-300 bg-green-50': aspect.value !== null && aspect.value !== undefined,
                                 }"
                             >
-                                <div class="mb-2 font-semibold text-blue-600">
-                                    {{ aspect.id }}
-                                    <span v-if="aspect.is_mandatory" class="ml-1 text-red-500">*</span>
-                                </div>
                                 <div class="mb-3">
-                                    {{ aspect.question }}
-                                    <div v-if="aspect.description" class="mt-1 text-xs text-gray-500">
+                                    <h3 class="font-medium text-gray-900">
+                                        {{ aspect.id }}. {{ aspect.question_text }}
+                                        <span v-if="aspect.is_mandatory" class="ml-1 text-red-500">*</span>
+                                    </h3>
+                                    <p v-if="aspect.description" class="mt-1 text-sm text-gray-600">
                                         {{ aspect.description }}
-                                    </div>
+                                    </p>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="mb-1 block text-sm font-medium text-gray-700">Nilai:</label>
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">Nilai</label>
                                     <Select v-model="aspect.value">
                                         <SelectTrigger class="w-full">
                                             <SelectValue placeholder="Pilih nilai" />
@@ -524,8 +544,8 @@ const closeReport = () => (showReport.value = false);
                                 </div>
 
                                 <div>
-                                    <label class="mb-1 block text-sm font-medium text-gray-700">Keterangan:</label>
-                                    <Textarea v-model="aspect.notes" placeholder="Masukkan keterangan..." class="min-h-[80px] w-full" />
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">Keterangan</label>
+                                    <Textarea v-model="aspect.notes" placeholder="Masukkan keterangan..." class="min-h-[60px]" />
                                 </div>
                             </div>
                         </div>
