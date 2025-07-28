@@ -46,6 +46,9 @@ Route::middleware(['auth', 'check.active.period'])->group(function () {
 });
 
 Route::get('summary', [SummaryController::class, 'show'])->name('summary');
+// Route::get('v1', function () {
+//     return Inertia::render('v1');
+// })->name('v1');
 Route::patch('summary/{reportId}', [SummaryController::class, 'update'])->name('summary.update');
 
 require __DIR__.'/settings.php';

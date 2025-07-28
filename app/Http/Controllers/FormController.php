@@ -174,7 +174,7 @@ class FormController extends Controller
                 'input' => $request->all()
             ]);
             
-            return back()->withErrors($e->errors())->with('error', 'Data tidak valid: ' . implode(', ', array_flatten($e->errors())));
+            return back()->withErrors($e->errors())->with('error', 'Data tidak valid: ' . implode(', ', collect($e->errors())->flatten()->all()));
             
         } catch (\Exception $e) {
             DB::rollBack();

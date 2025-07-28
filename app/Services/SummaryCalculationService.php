@@ -62,7 +62,7 @@ class SummaryCalculationService
         
         foreach ($answersByAspect as $aspectCode => $answers) {
             $firstAnswer = $answers->first();
-            $aspect = $firstAnswer->questionVersion->aspectVersion->aspect;
+            $aspect = $firstAnswer->questionVersion->aspectVersion;
             
             // Hitung total score untuk aspek ini
             $totalScore = 0;
@@ -140,7 +140,7 @@ class SummaryCalculationService
         if ($percentage >= 80) {
             return 'SAFE';
         } else {
-            return 'WARNING';
+            return 'WATCHLIST';
         } 
     }
     

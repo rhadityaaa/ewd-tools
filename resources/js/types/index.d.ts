@@ -313,7 +313,7 @@ export interface ReportAspect {
     report_id: number;
     aspect_version_id: number;
     total_score: number;
-    classification: 'safe' | 'warning' | 'critical';
+    classification: 'safe' | 'watchlist';
     report?: Report;
     aspect_version?: AspectVersion;
     created_at?: string;

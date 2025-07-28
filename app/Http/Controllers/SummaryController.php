@@ -27,7 +27,9 @@ class SummaryController extends Controller
 
         // Ambil data report dengan relasi
         $report = Report::with([
-            'borrower',
+            'borrower.details',
+            'borrower.facilities',
+            'borrower.division',
             'template',
             'period',
             'summary'
@@ -36,7 +38,7 @@ class SummaryController extends Controller
         // Hitung summary jika belum ada atau perlu diperbarui
         $summaryData = $this->summaryService->calculateAndStoreSummary($reportId);
 
-        return Inertia::render('Summary', [
+        return Inertia::render('v1', [
             'reportData' => $report,
             'reportId' => $reportId,
             'summaryCalculation' => $summaryData
@@ -49,27 +51,31 @@ class SummaryController extends Controller
             $validated = $request->validate([
                 'businessNotes' => 'nullable|string',
                 'reviewerNotes' => 'nullable|string',
+                'override' => 'boolean',
+                'collectibilityIndicator' => 'integer|min:0|max:4',
+                'overrideReason' => 'nullable|string|required_if:override,true',
             ]);
-            
-            $report = Report::findOrFail($reportId);
             
             ReportSummary::updateOrCreate(
                 ['report_id' => $reportId],
                 [
                     'business_notes' => $validated['businessNotes'] ?? '',
-                    'reviewer_notes' => $validated['reviewerNotes'] ?? ''
+                    'reviewer_notes' => $validated['reviewerNotes'] ?? '',
+                    'is_override' => $validated['override'] ?? false,
+                    'indicative_collectibility' => $validated['collectibilityIndicator'] ?? 0,
+                    'override_reason' => $validated['overrideReason'] ?? '',
                 ]
             );
             
             return response()->json([
                 'success' => true,
-                'message' => 'Catatan berhasil disimpan'
+                'message' => 'Data berhasil disimpan'
             ]);
             
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menyimpan catatan: ' . $e->getMessage()
+                'message' => 'Gagal menyimpan data: ' . $e->getMessage()
             ], 500);
         }
     }

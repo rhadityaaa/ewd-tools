@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('report_summaries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('report_id')->constrained('reports')->cascadeOnDelete();
-            $table->enum('final_classification', ['safe', 'warning']);
+            $table->enum('final_classification', ['safe', 'watchlist']);
             $table->integer('indicative_collectibility');
             $table->boolean('override')->default(false);
             $table->text('override_reason');

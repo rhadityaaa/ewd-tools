@@ -63,8 +63,7 @@
                                 >
                                     <option value="">Semua Klasifikasi</option>
                                     <option value="safe">SAFE</option>
-                                    <option value="warning">WARNING</option>
-                                    <option value="critical">CRITICAL</option>
+                                    <option value="watchlist">WATCHLIST</option>
                                 </select>
                             </div>
 
@@ -308,9 +307,7 @@ const getClassificationBadgeClass = (classification) => {
     switch (classification) {
         case 'safe':
             return 'bg-green-100 text-green-800'
-        case 'warning':
-            return 'bg-yellow-100 text-yellow-800'
-        case 'critical':
+        case 'watchlist':
             return 'bg-red-100 text-red-800'
         default:
             return 'bg-gray-100 text-gray-800'
@@ -321,10 +318,8 @@ const getClassificationText = (classification) => {
     switch (classification) {
         case 'safe':
             return 'SAFE'
-        case 'warning':
-            return 'WARNING'
-        case 'critical':
-            return 'CRITICAL'
+        case 'watchlist':
+            return 'WATCHLIST'
         default:
             return '-'
     }
