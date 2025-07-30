@@ -246,6 +246,14 @@ const getRiskLevelColor = (ratio: any) => {
                             <p class="text-xl font-bold" :class="getClassificationColor(overallSummary.final_classification)">
                                 {{ overallSummary.final_classification }}
                             </p>
+                            <!-- Tambahkan tombol NAW jika klasifikasi WATCHLIST -->
+                            <div v-if="overallSummary.final_classification === 'WATCHLIST'" class="mt-3">
+                                <a :href="route('naw.show', { report_id: reportId })" 
+                                   class="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                                    <AlertTriangle class="w-4 h-4 mr-1" />
+                                    Buka NAW
+                                </a>
+                            </div>
                         </div>
                         <div class="p-3 rounded-full" :class="getClassificationBg(overallSummary.final_classification)">
                             <component :is="getClassificationIcon(overallSummary.final_classification)" 

@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->foreignId('division_id')->constrained('divisions')->cascadeOnDelete();
+            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('inactive_reason', ['paid_off', 'written_off'])->nullable()->comment('Diisi jika status inactive, karena lunas atau write-off');
+            $table->date('inactive_date')->nullable();
             $table->timestamps();
         });
     }

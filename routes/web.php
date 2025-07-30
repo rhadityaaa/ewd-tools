@@ -6,6 +6,7 @@ use App\Http\Controllers\BorrowerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\FormController;
+use App\Http\Controllers\MonitoringNoteController;
 use App\Http\Controllers\PeriodController;
 use App\Http\Controllers\ReportController; // Tambahkan ini
 use App\Http\Controllers\RoleController;
@@ -46,10 +47,19 @@ Route::middleware(['auth', 'check.active.period'])->group(function () {
 });
 
 Route::get('summary', [SummaryController::class, 'show'])->name('summary');
-// Route::get('v1', function () {
-//     return Inertia::render('v1');
-// })->name('v1');
 Route::patch('summary/{reportId}', [SummaryController::class, 'update'])->name('summary.update');
+
+// NAW (Nota Monitoring Watchlist) routes
+Route::prefix('naw')->name('naw.')->group(function () {
+    Route::get('/', [MonitoringNoteController::class, 'show'])->name('show');
+    Route::patch('/{monitoringNote}', [MonitoringNoteController::class, 'update'])->name('update');
+    Route::post('/{monitoringNote}/action-items', [MonitoringNoteController::class, 'storeActionItem'])->name('action-items.store');
+    Route::patch('/action-items/{actionItem}', [MonitoringNoteController::class, 'updateActionItem'])->name('action-items.update');
+    Route::delete('/action-items/{actionItem}', [MonitoringNoteController::class, 'destroyActionItem'])->name('action-items.destroy');
+    Route::post('/{monitoringNote}/copy-previous', [MonitoringNoteController::class, 'copyFromPrevious'])->name('copy-previous');
+    Route::patch('/{monitoringNote}/watchlist-status', [MonitoringNoteController::class, 'updateWatchlistStatus'])->name('watchlist-status');
+    Route::get('/check-access', [MonitoringNoteController::class, 'checkAccess'])->name('check-access');
+});
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

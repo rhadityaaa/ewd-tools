@@ -38,11 +38,26 @@ class SummaryController extends Controller
         // Hitung summary jika belum ada atau perlu diperbarui
         $summaryData = $this->summaryService->calculateAndStoreSummary($reportId);
 
-        return Inertia::render('v1', [
+        // Ambil klasifikasi periode sebelumnya
+        $previousPeriodClassification = $this->getPreviousPeriodClassification($report);
+        
+        return Inertia::render('Summary', [
             'reportData' => $report,
             'reportId' => $reportId,
-            'summaryCalculation' => $summaryData
+            'summaryCalculation' => $summaryData,
+            'previousPeriodClassification' => $previousPeriodClassification
         ]);
+    }
+
+    private function getPreviousPeriodClassification(Report $report)
+    {
+        $previousReport = Report::where('borrower_id', $report->borrower_id)
+            ->where('period_id', '<', $report->period_id)
+            ->with('summary')
+            ->orderBy('period_id', 'desc')
+            ->first();
+            
+        return $previousReport?->summary?->final_classification;
     }
 
     public function update(Request $request, int $reportId)

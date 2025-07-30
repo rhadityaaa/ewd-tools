@@ -18,20 +18,16 @@ class SummaryCalculationService
         try {
             DB::beginTransaction();
             
-            // Perbaiki eager loading untuk memuat questionOption
             $report = Report::with([
                 'template.latestVersion', 
                 'answers.questionVersion.aspectVersion.aspect',
                 'answers.questionOption'
             ])->findOrFail($reportId);
             
-            // Hitung scoring per aspek
             $aspectScores = $this->calculateAspectScores($report);
             
-            // Hitung summary keseluruhan
             $overallSummary = $this->calculateOverallSummary($aspectScores, $report);
             
-            // Simpan hasil ke database
             $this->storeCalculationResults($report, $aspectScores, $overallSummary);
             
             DB::commit();
@@ -55,7 +51,6 @@ class SummaryCalculationService
     {
         $aspectScores = [];
         
-        // Group answers by aspect - perbaiki akses relasi
         $answersByAspect = $report->answers->groupBy(function($answer) {
             return $answer->questionVersion->aspectVersion->aspect->code;
         });
@@ -64,26 +59,22 @@ class SummaryCalculationService
             $firstAnswer = $answers->first();
             $aspect = $firstAnswer->questionVersion->aspectVersion;
             
-            // Hitung total score untuk aspek ini
             $totalScore = 0;
             $maxScore = 0;
             
             foreach ($answers as $answer) {
                 $questionWeight = $answer->questionVersion->weight;
                 $optionScore = $answer->questionOption->score ?? 0;
-                $questionMaxScore = $answer->questionVersion->max_score; // Perbaiki: hapus komentar
+                $questionMaxScore = $answer->questionVersion->max_score;
                 
                 $totalScore += ($optionScore * $questionWeight / 100);
                 $maxScore += ($questionMaxScore * $questionWeight / 100);
             }
             
-            // Hitung persentase
             $percentage = $maxScore > 0 ? round(($totalScore / $maxScore) * 100, 2) : 0;
             
-            // Dapatkan bobot aspek dari template (sudah dalam format persentase)
             $aspectWeight = $this->getAspectWeightFromTemplate($report, $firstAnswer->questionVersion->aspectVersion->id);
             
-            // Hitung weighted score - bobot sudah dalam persentase
             $weightedScore = round(($percentage * $aspectWeight) / 100, 2);
             
             $classification = $this->determineClassification($percentage);
@@ -109,7 +100,6 @@ class SummaryCalculationService
         $totalWeightedScore = array_sum(array_column($aspectScores, 'weighted_score'));
         $totalWeight = array_sum(array_column($aspectScores, 'weight'));
         
-        // Overall percentage adalah total weighted score (karena total bobot = 100%)
         $overallPercentage = round($totalWeightedScore, 2);
         
         $finalClassification = $this->determineClassification($overallPercentage);
@@ -128,7 +118,6 @@ class SummaryCalculationService
     
     private function getAspectWeightFromTemplate(Report $report, int $aspectVersionId): float
     {
-        // Ambil bobot aspek dari template version
         $templateVersion = $report->template->latestVersion;
         $aspectVersion = $templateVersion->aspectVersions->where('id', $aspectVersionId)->first();
         
@@ -146,11 +135,11 @@ class SummaryCalculationService
     
     private function determineCollectibility(float $percentage): int
     {
-        if ($percentage >= 90) return 0; // Current
-        elseif ($percentage >= 80) return 1; // Special Mention
-        elseif ($percentage >= 60) return 2; // Substandard
-        elseif ($percentage >= 40) return 3; // Doubtful
-        else return 4; // Loss
+        if ($percentage >= 90) return 0; 
+        elseif ($percentage >= 80) return 1;
+        elseif ($percentage >= 60) return 2;
+        elseif ($percentage >= 40) return 3;
+        else return 4;
     }
     
     private function determineRiskLevel(float $percentage): string
@@ -166,7 +155,6 @@ class SummaryCalculationService
     
     private function storeCalculationResults(Report $report, array $aspectScores, array $overallSummary): void
     {
-        // Simpan atau update report aspects
         foreach ($aspectScores as $aspectScore) {
             ReportAspect::updateOrCreate(
                 [
@@ -180,7 +168,6 @@ class SummaryCalculationService
             );
         }
         
-        // Simpan atau update report summary
         ReportSummary::updateOrCreate(
             ['report_id' => $report->id],
             [

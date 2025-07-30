@@ -51,13 +51,10 @@ class TemplateBuilderService
     public function updateTemplate(Template $template, array $data): Template
     {
         return DB::transaction(function () use ($template, $data) {
-            // Update template name
             $template->update(['name' => $data['name']]);
 
-            // Get or create new version
             $latestVersion = $template->latestVersion;
             
-            // Create new version if description changed or aspects changed
             $needsNewVersion = (
                 $latestVersion->description !== ($data['description'] ?? null) ||
                 $this->aspectsChanged($latestVersion, $data['selected_aspects'] ?? [])
@@ -76,7 +73,6 @@ class TemplateBuilderService
                 ]);
             }
 
-            // Update aspects
             if (!empty($data['selected_aspects'])) {
                 $pivotData = $this->prepareAspectPivotData($data['selected_aspects']);
                 $templateVersion->aspectVersions()->sync($pivotData);
@@ -84,7 +80,6 @@ class TemplateBuilderService
                 $templateVersion->aspectVersions()->detach();
             }
 
-            // Update visibility rules
             $templateVersion->visibilityRules()->delete();
             if (!empty($data['visibility_rules'])) {
                 $templateVersion->visibilityRules()->createMany($data['visibility_rules']);
@@ -111,7 +106,6 @@ class TemplateBuilderService
     public function deleteTemplate(Template $template): void
     {
         DB::transaction(function () use ($template) {
-            // Delete all template versions and related data
             foreach ($template->templateVersions as $version) {
                 $version->aspectVersions()->detach();
                 $version->visibilityRules()->delete();

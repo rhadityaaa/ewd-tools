@@ -15,6 +15,13 @@ class Borrower extends Model
     protected $fillable = [
         'name',
         'division_id',
+        'status',
+        'inactive_reason',
+        'inactive_date'
+    ];
+
+    protected $casts = [
+        'inactive_date' => 'date',
     ];
 
     public function division(): BelongsTo
