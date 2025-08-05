@@ -5,14 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ReportSummary;
 use App\Services\SummaryCalculationService;
+use App\Services\SummaryService;
+use Exception;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class SummaryController extends Controller
 {
-    protected SummaryCalculationService $summaryService;
+    protected SummaryService $summaryService;
 
-    public function __construct(SummaryCalculationService $summaryService)
+    public function __construct(SummaryService $summaryService)
     {
         $this->summaryService = $summaryService;
     }
@@ -25,28 +27,13 @@ class SummaryController extends Controller
             return redirect()->route('dashboard')->with('error', 'Report ID tidak ditemukan');
         }
 
-        // Ambil data report dengan relasi
-        $report = Report::with([
-            'borrower.details',
-            'borrower.facilities',
-            'borrower.division',
-            'template',
-            'period',
-            'summary'
-        ])->findOrFail($reportId);
+        try {
+            $summaryData = $this->summaryService->getSummaryData($reportId);
 
-        // Hitung summary jika belum ada atau perlu diperbarui
-        $summaryData = $this->summaryService->calculateAndStoreSummary($reportId);
-
-        // Ambil klasifikasi periode sebelumnya
-        $previousPeriodClassification = $this->getPreviousPeriodClassification($report);
-        
-        return Inertia::render('Summary', [
-            'reportData' => $report,
-            'reportId' => $reportId,
-            'summaryCalculation' => $summaryData,
-            'previousPeriodClassification' => $previousPeriodClassification
-        ]);
+            return Inertia::render('Summary', $summaryData);
+        } catch (Exception $e) {
+            return redirect()->route('dashboard')->with('error', 'Gagal memuat data: ' . $e->getMessage());
+        }
     }
 
     private function getPreviousPeriodClassification(Report $report)

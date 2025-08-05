@@ -19,6 +19,7 @@ class SummaryCalculationService
             DB::beginTransaction();
             
             $report = Report::with([
+                'borrower.details',
                 'template.latestVersion', 
                 'answers.questionVersion.aspectVersion.aspect',
                 'answers.questionOption'
@@ -104,7 +105,7 @@ class SummaryCalculationService
         
         $finalClassification = $this->determineClassification($overallPercentage);
         $riskLevel = $this->determineRiskLevel($overallPercentage);
-        $collectibility = $this->determineCollectibility($overallPercentage);
+        $collectibility = $report->borrower->details->collectibility;
         
         return [
             'total_weighted_score' => $totalWeightedScore,
@@ -131,15 +132,6 @@ class SummaryCalculationService
         } else {
             return 'WATCHLIST';
         } 
-    }
-    
-    private function determineCollectibility(float $percentage): int
-    {
-        if ($percentage >= 90) return 0; 
-        elseif ($percentage >= 80) return 1;
-        elseif ($percentage >= 60) return 2;
-        elseif ($percentage >= 40) return 3;
-        else return 4;
     }
     
     private function determineRiskLevel(float $percentage): string

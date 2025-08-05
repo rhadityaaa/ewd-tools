@@ -1,6 +1,25 @@
 import type { LucideIcon } from 'lucide-vue-next';
 import type { Config } from 'ziggy-js';
 
+export interface Paginated<T> {
+    data: T[];
+    links: {
+        first: string | null;
+        last: string | null;
+        prev: string | null;
+        next: string | null;
+    };
+    meta: {
+        current_page: number;
+        from: number;
+        last_page: number;
+        path: string;
+        per_page: number;
+        to: number;
+        total: number;
+    }
+}
+
 export interface Auth {
     user: User;
 }
@@ -300,10 +319,11 @@ export interface Report {
     borrower_id: number;
     template_id: number;
     period_id: number;
-    status: 'draft' | 'submitted' | 'approved' | 'rejected';
     borrower?: Borrower;
     template?: Template;
     period?: Period;
+    summary?: ReportSummary;
+    creator?: User;  // Add this line
     created_at?: string;
     updated_at?: string;
 }
@@ -336,13 +356,12 @@ export interface Answer {
 export interface ReportSummary {
     id: number;
     report_id: number;
-    total_score: number;
-    max_possible_score: number;
-    percentage: number;
-    risk_level: 'low' | 'medium' | 'high';
-    report?: Report;
-    created_at?: string;
-    updated_at?: string;
+    final_classification: string;
+    indicative_collectibility: number;
+    is_override: boolean;
+    override_reason: string;
+    business_notes: string;
+    reviewer_notes: string;
 }
 
 // Legacy type alias
