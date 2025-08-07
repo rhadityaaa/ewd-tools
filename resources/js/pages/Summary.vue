@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Head } from '@inertiajs/vue3';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -30,6 +31,8 @@ const toggleSection = (section: any) => {
 
 <template>
     <div class="min-h-screen">
+        <Head title="Summary Early Warning" />
+        
         <!-- Header -->
         <div class="bg-[#2e3192] p-4 text-white shadow-lg">
             <div class="flex items-center justify-between">

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enum\Classification;
+use App\Http\Resources\ReportResource;
 use App\Models\MonitoringNote;
 use App\Models\Report;
 use App\Models\Watchlist;
@@ -10,74 +11,48 @@ use Illuminate\Support\Facades\Auth;
 
 class MonitoringNoteService
 {
-    public function isNawRequired(int $reportId): bool
+    protected ReportService $reportService;
+
+    public function __construct(ReportService $reportService)
     {
-        $report = Report::with('summary')->findOrFail($reportId);
-
-        $currentClassification = $report->summary->final_classification;
-        $previousClassification = $this->getPreviousPeriodClassification($report);
-
-        return $currentClassification === Classification::WATCHLIST->value || $previousClassification === Classification::WATCHLIST->value;
+        $this->reportService = $reportService;
     }
 
-    public function getPreviousPeriodClassification(Report $report): ?string
+    public function getMonitoringNoteData(int $reportId)
     {
-        $previousReport = Report::where('borrower_id', $report->borrower_id)
-            ->where('period_id', '<', $report->period_id)
-            ->with('summary')
-            ->orderBy('period_id', 'desc')
-            ->first();
-            
-        if (!$previousReport || !$previousReport->summary) {
-            return null;
-        }
-            
-        return $previousReport->summary->final_classification;
+        $report = $this->reportService->getReportById($reportId);
+        $watchlist = $this->getWatchlistByReportId($reportId);
+        $monitoringNote = $this->getMonitoringNoteByWatchlist($watchlist->id);
+
+        $actionItems = [
+            'previous_period' =>
+            $monitoringNote->actionItems->where('item_type', 'previous_period')->values(),
+            'current_progress' => 
+            $monitoringNote->actionItems->where('item_type', 'current_progress')->values(),
+            'next_period' => 
+            $monitoringNote->actionItems->where('item_type', 'next_period')->values(),
+        ];
+
+        return [
+            'watchlist' => $watchlist,
+            'report' => $report,
+            'monitoringNote' => $monitoringNote,
+            'actionItems' => $actionItems,
+        ];
     }
 
-     public function getOrCreateMonitoringNote(int $reportId): MonitoringNote
+    public function getWatchlistByReportId(int $reportId)
     {
-        $report = Report::findOrFail($reportId);
-        
-        $watchlist = Watchlist::firstOrCreate(
-            ['report_id' => $reportId, 'borrower_id' => $report->borrower_id],
-            ['status' => 'active', 'added_by' => Auth::id()]
-        );
-
-        $monitoringNote = MonitoringNote::firstOrCreate(
-            ['watchlist_id' => $watchlist->id],
-            [
-                'watchlist_reason' => '(Alasan belum diisi)',
-                'account_strategy' => '(Strategi belum diisi)',
-                'created_by' => Auth::id(),
-            ]
-        );
-        
-        return $monitoringNote->loadMissing(['actionItems', 'createdBy', 'updatedBy']);
+        return Watchlist::with([
+            'borrower',
+            'report',
+            'addedBy',
+            'resolvedBy',
+        ])->where('report_id', $reportId)->firstOrFail();
     }
-    
-    public function updateMonitoringNote(int $monitoringNoteId, array $data): MonitoringNote
+
+    public function getMonitoringNoteByWatchlist(int $watchlist_id)
     {
-        $monitoringNote = MonitoringNote::findOrFail($monitoringNoteId);
-        
-        $updateData = [];
-
-        if (array_key_exists('watchlist_reason', $data)) {
-            $updateData['watchlist_reason'] = $data['watchlist_reason'];
-        }
-
-        if (array_key_exists('account_strategy', $data)) {
-            $updateData['account_strategy'] = $data['account_strategy'];
-        }
-
-        if (empty($updateData)) {
-            return $monitoringNote;
-        }
-
-        $updateData['updated_by'] = Auth::id();
-        
-        $monitoringNote->update($updateData);
-        
-        return $monitoringNote->fresh(['actionItems', 'createdBy', 'updatedBy']);
+        return MonitoringNote::with('actionItems')->where('watchlist_id', $watchlist_id)->firstOrFail();
     }
 }

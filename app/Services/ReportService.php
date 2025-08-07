@@ -18,7 +18,7 @@ class ReportService
 
     public function getReportById(int $id)
     {
-        $report = Report::with(['borrower', 'template', 'period', 'summary'])->findOrFail($id);
+        $report = Report::with(['borrower', 'template', 'period', 'summary', 'creator'])->findOrFail($id);
 
         return $report;
     }

@@ -11,6 +11,7 @@ use App\Models\Watchlist;
 use App\Models\Report;
 use App\Services\MonitoringNoteService;
 use App\Services\ActionItemService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,7 @@ class MonitoringNoteController extends Controller
         $this->actionItemService = $actionItemService;
     }
 
-    public function show(Request $request): Response
+    public function show(Request $request)
     {
         $reportId = $request->query('report_id');
         
@@ -39,38 +40,13 @@ class MonitoringNoteController extends Controller
             abort(400, 'Report ID is required');
         }
 
-        $report = Report::with(['borrower', 'period', 'summary'])->findOrFail($reportId);
-        
-        // Check if NAW is required
-        $isNawRequired = $this->monitoringNoteService->isNawRequired($reportId);
-        
-        if (!$isNawRequired) {
-            // return redirect()->back()->with('error', 'NAW tidak diperlukan untuk laporan ini.');
+        try {
+            $monitoringNoteData = $this->monitoringNoteService->getMonitoringNoteData($reportId);
+            
+            return Inertia::render('Watchlist', $monitoringNoteData);
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Gagal memuat data: ' . $e->getMessage());
         }
-
-        // Get or create monitoring note
-        $monitoringNote = $this->monitoringNoteService->getOrCreateMonitoringNote($reportId);
-        
-        // Get action items grouped by type
-        $actionItems = ActionItem::where('monitoring_note_id', $monitoringNote->id)
-            ->orderBy('item_type')
-            ->orderBy('created_at')
-            ->get()
-            ->groupBy('item_type');
-
-        // Get watchlist if exists
-        $watchlist = Watchlist::where('report_id', $reportId)->first();
-
-        return Inertia::render('Watchlist', [
-            'report' => new ReportResource($report),
-            'monitoringNote' => new MonitoringNoteResource($monitoringNote->load(['createdBy', 'updatedBy'])),
-            'actionItems' => $actionItems->map(function ($item) {
-                return ActionItemResource::collection($item);
-            }),
-            'watchlist' => $watchlist,
-            'isNawRequired' => $isNawRequired,
-            // 'canEdit' => $this->monitoringNoteService->canAccessNaw($reportId)
-        ]);
     }
 
     /**

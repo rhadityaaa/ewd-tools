@@ -49,8 +49,7 @@ Route::middleware(['auth', 'check.active.period'])->group(function () {
 Route::get('summary', [SummaryController::class, 'show'])->name('summary');
 Route::patch('summary/{reportId}', [SummaryController::class, 'update'])->name('summary.update');
 
-// NAW (Nota Monitoring Watchlist) routes
-Route::prefix('naw')->name('naw.')->group(function () {
+Route::prefix('watchlist')->name('naw.')->group(function () {
     Route::get('/', [MonitoringNoteController::class, 'show'])->name('show');
     Route::patch('/{monitoringNote}', [MonitoringNoteController::class, 'update'])->name('update');
     Route::post('/{monitoringNote}/action-items', [MonitoringNoteController::class, 'storeActionItem'])->name('action-items.store');
