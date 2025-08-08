@@ -16,11 +16,17 @@ return new class extends Migration
             $table->foreignId('report_id')->constrained('reports')->cascadeOnDelete();
             $table->enum('final_classification', ['safe', 'watchlist']);
             $table->integer('indicative_collectibility');
-            $table->boolean('override')->default(false);
-            $table->text('override_reason');
-            $table->text('business_notes');
-            $table->text('reviewer_notes');
+            $table->boolean('is_override')->default(false);
+            $table->text('override_reason')->nullable();
+            $table->foreignId('override_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('business_notes')->nullable();
+            $table->text('reviewer_notes')->nullable();
             $table->timestamps();
+
+            /** Constrain and Index */
+            $table->unique('report_id');
+            $table->index(['final_classification', 'is_override']);
+            $table->index(['is_override']);
         });
     }
 
