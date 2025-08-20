@@ -10,86 +10,27 @@ const props = defineProps<{
 
 const page = usePage();
 
-// Group items by category for better organization
 const groupedItems = computed(() => {
-    const groups = {
-        admin: [] as NavItem[],
-        business: [] as NavItem[],
-        approval: [] as NavItem[],
-        other: [] as NavItem[]
-    };
-    
+    const groups: Record<string, NavItem[]> = {};
     props.items.forEach(item => {
-        if (['User', 'Divisi', 'Periode', 'Template', 'Aspek'].includes(item.title)) {
-            groups.admin.push(item);
-        } else if (['Debitur', 'Laporan'].includes(item.title)) {
-            groups.business.push(item);
-        } else if (['Persetujuan', 'Laporan Persetujuan'].includes(item.title)) {
-            groups.approval.push(item);
-        } else {
-            groups.other.push(item);
+        const group = item.group || 'Lainnya';
+        if (!groups[group]) {
+            groups[group] = [];
         }
-    });
-    
+        groups[group].push(item);
+    })
     return groups;
 });
 </script>
 
 <template>
-    <div class="space-y-2">
-        <!-- Main/Dashboard Items -->
-        <SidebarGroup v-if="groupedItems.other.length > 0" class="px-2 py-0">
-            <SidebarGroupLabel>Platform</SidebarGroupLabel>
+    <div v-for="(items, group) in groupedItems" :key="group" class="px-2 py-0">
+        <SidebarGroup>
             <SidebarMenu>
-                <SidebarMenuItem v-for="item in groupedItems.other" :key="item.title">
+                <SidebarMenuItem v-for="item in items" :key="item.title">
                     <SidebarMenuButton as-child :is-active="item.href === page.url" :tooltip="item.title">
-                        <Link :href="item.href">
-                            <component :is="item.icon" />
-                            <span>{{ item.title }}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarGroup>
-
-        <!-- Business Items -->
-        <SidebarGroup v-if="groupedItems.business.length > 0" class="px-2 py-0">
-            <SidebarGroupLabel>Bisnis</SidebarGroupLabel>
-            <SidebarMenu>
-                <SidebarMenuItem v-for="item in groupedItems.business" :key="item.title">
-                    <SidebarMenuButton as-child :is-active="item.href === page.url" :tooltip="item.title">
-                        <Link :href="item.href">
-                            <component :is="item.icon" />
-                            <span>{{ item.title }}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarGroup>
-
-        <!-- Approval Items -->
-        <SidebarGroup v-if="groupedItems.approval.length > 0" class="px-2 py-0">
-            <SidebarGroupLabel>Persetujuan</SidebarGroupLabel>
-            <SidebarMenu>
-                <SidebarMenuItem v-for="item in groupedItems.approval" :key="item.title">
-                    <SidebarMenuButton as-child :is-active="item.href === page.url" :tooltip="item.title">
-                        <Link :href="item.href">
-                            <component :is="item.icon" />
-                            <span>{{ item.title }}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarGroup>
-
-        <!-- Admin Items -->
-        <SidebarGroup v-if="groupedItems.admin.length > 0" class="px-2 py-0">
-            <SidebarGroupLabel>Administrasi</SidebarGroupLabel>
-            <SidebarMenu>
-                <SidebarMenuItem v-for="item in groupedItems.admin" :key="item.title">
-                    <SidebarMenuButton as-child :is-active="item.href === page.url" :tooltip="item.title">
-                        <Link :href="item.href">
-                            <component :is="item.icon" />
+                        <Link :href="item.href" class="flex items-center gap-2">
+                            <component :is="item.icon" class="h-4 w-4" />
                             <span>{{ item.title }}</span>
                         </Link>
                     </SidebarMenuButton>

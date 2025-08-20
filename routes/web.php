@@ -96,7 +96,7 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::resource('roles', RoleController::class);
 });
 
-Route::middleware(['auth', 'role:unit_bisnis,kadept_bisnis'])->group(function () {
+Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::resource('borrowers', BorrowerController::class);
 });
 
